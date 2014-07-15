@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>TrajectoryAnimator < ResearchTestTool</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" type="text/css" href="stylesheets/theme.css"/>
+        <link rel="stylesheet" type="text/css" href="lib/bootstrap/css/bootstrap.min.css"/>
+        <link rel="stylesheet" type="text/css" href="stylesheets/jquery-ui-1.10.1.custom.min.css"/>
+        <style>
+            /*.ui-slider-horizontal{ background: rgba(43, 136, 221, 0.39); } */
+            /* .ui-slider-handle{ background: rgba(43, 136, 255, 1) !important; border: 1px solid #3333ff; } */
+            #currentTime{
+                padding: 5px 10px; 
+                position: absolute; top: 10px; left: 255px;
+                text-align: center; 
+                width: 90px; 
+                font-weight: bold;  background: rgba(224, 222, 222, 0.66); border: 1px solid #666;
+                z-index: 2;
+            }
+            #timeSliderLegend{ font-weight: bold }
+        </style>
+    </head>
+    <body style="width: 100%; margin: 10px; padding: 0;">
+        <div style="float: left; width: 49%">
+            <div id="currentTime">[Now]</div>
+            <div id="map_canvas" style="width: 100%; height: 600px; margin-bottom: 10px; z-index: 0"></div>
+        </div>
+        
+        <div style="float: left; padding-left: 20px; width: 49%">
+            
+            <div id="slider" style="width: 90%">
+                <div id="timeSlider" style="width: 95%; margin: 0px auto;"></div>
+                <div id="timeSliderLegend" style="width: 100%">
+                    <div id="startTime" style="float: left; margin-left: 2%;">[Start time]</div>
+                    <div id="endTime" style="float: right; margin-right: 2%;">[End time]</div>
+                    <div id="middleTime" style="width: 20%; margin: 0px auto; text-align: center">[Half time]</div>
+                </div>
+            </div>
+            
+            <div id="animationControl" style="">
+                <button id="playPause"></button>
+                <button id="slowerBtn">/2</button>
+                <button id="fasterBtn">x2</button>
+            </div>
+            
+            <div id="chart" style="width: 1000px; height: 400px"></div>
+        </div>
+        
+        
+        
+        <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=geometry&sensor=false"></script>
+        <script src="//code.jquery.com/jquery-1.10.2.min.js" type="text/javascript"></script>
+        <script src="//code.jquery.com/ui/1.11.0/jquery-ui.min.js" type="text/javascript"></script>
+        <script src="http://code.highcharts.com/highcharts.js" type="text/javascript"></script>
+        <script src="js/myMapStyles.js" type="text/javascript"></script>
+        <script src="js/trajectoryAnimator.js" type="text/javascript"></script>
+    </body>
+</html>

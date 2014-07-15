@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8"/>
+        <title>MeetYouThere TestTool</title>
+        <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+        <link rel="stylesheet" type="text/css" href="lib/bootstrap/css/bootstrap.min.css"/>
+        <link rel="stylesheet" type="text/css" href="stylesheets/jquery-ui-1.10.1.custom.min.css"/>
+        <link rel="stylesheet" type="text/css" href="stylesheets/theme.css"/>
+        <link rel="stylesheet" type="text/css" href="stylesheets/jquery.jqplot.min.css"/>
+        <link rel="stylesheet" type="text/css" href="lib/font-awesome/css/font-awesome.css"/>
+
+        <!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+        <!--[if lt IE 9]>
+          <script src="lib/html5.js"></script>
+        <![endif]-->
+
+    </head>
+
+    <!--[if lt IE 7 ]> <body class="ie ie6"> <![endif]-->
+    <!--[if IE 7 ]> <body class="ie ie7 "> <![endif]-->
+    <!--[if IE 8 ]> <body class="ie ie8 "> <![endif]-->
+    <!--[if IE 9 ]> <body class="ie ie9 "> <![endif]-->
+    <!--[if (gt IE 9)|!(IE)]><!--> 
+    <body class=""> 
+        <!--<![endif]-->
+
+        <!-- FELSO KEK SAV (statikus) -->
+        <div class="navbar">
+            <div class="navbar-inner">
+                <a class="brand" href="#"><span class="second">MeetYouThere TestTool</span></a>
+            </div>
+        </div>
+        
+        <div class="dialog" id="measurementBox" style="float: left; display: block; width: 1200px; margin-top: 0px">
+            <div class="block">
+                <p class="block-heading">Map view</p>
+                <div class="block-body">
+                    <div id="map_canvas" style="width: 100%; height: 600px"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- FELSO KEK SAV VEGE -->
+        <div class="dialog" id="dataInputBox" style="float: left; max-height: 70%; margin-bottom: 0px; margin-top: 0px">
+            <div class="block">
+                <p class="block-heading">Data file from GeoLife</p>
+                <div class="block-body">
+
+                    <div class="alert alert-error" id="loadError" style="display: none">
+                        <button type="button" class="close">×</button>
+                        <strong></strong>
+                    </div>
+                    
+                    <!--Fájl tallózása: <input type="file" id="dataFile" />-->
+                    <div style="float: left; width: 37%; margin-top: 10px; vertical-align: middle"><input type="number" value="1" min="1" max="6" id="randomTrajectoriesCount" style="width: 20px"/> random <button id="loadRandom" class="btn btn-mini">Load</button></div>
+                    <div id="dropFile" class="dropZoneNormal" style="width: 60%; float: right">Drop data file here</div>
+                    <div style="clear: both"></div>
+                    <button class="btn btn-mini" id="clearLogBtn" style="margin-top: 1em;">Clear log</button>
+                    <pre id="dataPreview" style="display: none; margin-top: 1em;"></pre>
+                </div>
+            </div>
+        </div>
+
+        <div class="block" style="border: none; padding: 0px; margin: 0px; float: none">
+            
+            <div class="dialog parameterBox"  style="float: left; display: none; margin-bottom: 0px">
+                <div class="block">
+                    <p class="block-heading">Set parameters of angle cut algorithm</p>
+                    <div class="block-body">
+                        <p>
+                            Min angle to keep:
+                            <input type="text" id="minAngle" value="30" style="width: 40px; text-align: center"/> degrees
+                            <!--
+                            <div id="toleranceSlider"></div>
+                            <div class="pull-left">0.001</div>
+                            <div class="pull-right">5</div>
+                            Min tolerance in meters:
+                            <input type="text" value="5" style="width: 40px;" id="minTolerance"/>
+                            -->
+                        </p>
+                        <div style="clear: both"></div>
+                        <div class="btn btn-primary" id="startAnglecut" style="margin-top: 1em; width: 90%">Compress route!</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dialog parameterBox" style="float: left; display: none; margin-bottom: 0px">
+                <div class="block">
+                    <p class="block-heading">Set parameters of DP algorithm</p>
+                    <div class="block-body">
+                        <p>
+                            Douglas-Peucker tolerance:
+                            <input type="text" id="tolerance" value="50" style="width: 40px; text-align: center"/> meters
+                            <!--
+                            <div id="toleranceSlider"></div>
+                            <div class="pull-left">0.001</div>
+                            <div class="pull-right">5</div>
+                            Min tolerance in meters:
+                            <input type="text" value="5" style="width: 40px;" id="minTolerance"/>
+                            -->
+                        </p>
+                        <p>
+                            Distance measure: 
+                            <input type="radio" name="distanceMeasure" value="degrees" checked="checked"/> degrees &nbsp;&nbsp;&nbsp;&nbsp;
+                            <input type="radio" name="distanceMeasure" value="meters"/> meters
+                        </p>
+                        <div style="clear: both"></div>
+                        <div class="btn btn-primary" id="startDouglasPeucker" style="margin-top: 1em; width: 90%">Compress route!</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!--
+            <div class="dialog" style="float: left; margin-bottom: 0px">
+                <div class="block">
+                    <p class="block-heading">Distance differences</p>
+                    <div class="block-body">
+                        <div class="btn btn-primary" id="calcDistDiff" style="margin-top: 1em; width: 90%">Calculate!</div>
+                        <textarea id="distDiff"></textarea>
+                    </div>
+                </div>
+            </div>
+            -->
+            
+            
+            
+        </div>    
+        
+        <!-- Scripts section -->
+        <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=geometry&sensor=false"></script>
+        <script src="lib/jquery-1.9.1.min.js" type="text/javascript"></script>
+        <script src="lib/jquery-ui-1.10.1.custom.min.js" type="text/javascript"></script>
+        <script src="lib/modernizr.lib.js" type="text/javascript"></script>
+        <script src="js/fekutScripts.js" type="text/javascript"></script>
+        <script src="js/distancesCheck.js" type="text/javascript"></script>
+        
+    </body>
+</html>
+
+
