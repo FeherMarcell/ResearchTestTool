@@ -16,6 +16,7 @@ define("ROW", 0);
 define("COL", 1);
 
 function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggingEnabled = false) {
+    if($loggingEnabled) logToFile("getTrajectorySimilarity started");
     /*
     // echo "<pre>";
     for($i=0 ; $i<count($trajectoryObjects) ; $i++){
@@ -105,9 +106,12 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
 
 
         $mainGridCells = markTrajectory($trajectory, $gridCellSize, $commonBoundingBox[BB_SW]);
-        // echo "Main grid: <br>";
-        foreach($mainGridCells as $key => $arr){
-            // echo $key . " => [" . implode(", ", $arr) . "]<br>";
+        
+        if($loggingEnabled){
+            logToFile("Main grid:");
+            foreach($mainGridCells as $key => $arr){
+                logToFile($key . " => [" . implode(", ", $arr) . "]");
+            }
         }
         
         // Secondary grid, shifted
@@ -116,19 +120,24 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
             LAT => $commonBoundingBox[BB_SW][LAT] - ($gridCellSize[LAT] / 2)
         );
         $secondaryGridCells = markTrajectory($trajectory, $gridCellSize, $secondaryGridSouthWest);
-        // echo "Secondary grid: <br>";
-        foreach($secondaryGridCells as $key => $arr){
-            // echo $key . " => [" . implode(", ", $arr) . "]<br>";
+        
+        if($loggingEnabled){
+            logToFile("Secondary grid:");
+            foreach($secondaryGridCells as $key => $arr){
+                logToFile($key . " => [" . implode(", ", $arr) . "]");
+            }
         }
         
         
         
-        // echo "<hr>Merging<hr>";
+        
+        if($loggingEnabled) logToFile("Merging...");
         // merge two grids to get the overlap
         $mergedGrid = array();
         foreach($mainGridCells as $row => $colArr){
             foreach($colArr as $col){
-
+                if($loggingEnabled) logToFile(" Checking [$row][$col]");
+                
                 $localMaxCol = -1;
 
                 // $mainCell = [$row, $col];
@@ -156,13 +165,15 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
                 }
             }
         }
-        
+        if($loggingEnabled) logToFile("Merging finished.");
         
         
 
-        // echo "Merged grid: <br>";
-        foreach($mergedGrid as $key => $arr){
-            // echo $key . " => [" . implode(", ", $arr) . "]<br>";
+        if($loggingEnabled){
+            logToFile("Secondary grid:");
+            foreach($mergedGrid as $key => $arr){
+                logToFile($key . " => [" . implode(", ", $arr) . "]");
+            }
         }
         
         
@@ -223,13 +234,16 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
     else{
         $similarity = ($overlappingMergedCellsNum / $distinctMergedCellsNum);
     }
-
+    
+    if($loggingEnabled) logToFile("Calculated similarity: " . $similarity);
+    if($loggingEnabled) logToFile("getTrajectorySimilarity finished");
+    
     return $similarity;
 
     //return array("MainGrid" => $mainGridCells, "SecondaryGrid" => $secondaryGridCells, "MergedGrid" => $mergedGrid);
 }
 
-error_reporting(E_ERROR);
+
 
 function findCellInGrids(&$gridsArr, $row, $col){
     $counter = 0;
@@ -242,12 +256,14 @@ function findCellInGrids(&$gridsArr, $row, $col){
 }
 
 function isPointInGrid(&$grid, $row, $col){
-    return is_array($grid[$row]) && in_array($col, $grid[$row]);
+    return in_array($row, array_keys($grid)) && in_array($col, $grid[$row]);
 }
 
 function markTrajectory(&$trajectory, $gridCellSize, $gridSouthWest){
         /* @var $trajectory Trajectory */
 
+        // logToFile("markTrajectory called for trajectory " . $trajectory->id);
+    
         $gridCells = array();
 
         // calculate cell of the very first point
@@ -257,6 +273,7 @@ function markTrajectory(&$trajectory, $gridCellSize, $gridSouthWest){
         // and mark it in $gridCells
         addToGrid($gridCells, $edgeStartCoords[ROW], $edgeStartCoords[COL]);
         for($i=1 ; $i<count($trajectory->points) ; $i++){
+            // logToFile("marking edge between points " . ($i-1) . " and " . $i);
             $edgeEndPoint = $trajectory->points[$i];
             $edgeEndCoords = calculateGridCoordOfPoint($gridSouthWest, $gridCellSize, $edgeEndPoint);
             
@@ -490,11 +507,20 @@ function inNeighbourCells($cellCoord1, $cellCoord2){
  */
 function areOverlapping(&$boundingBoxesArr){
     $intersection = $boundingBoxesArr[0];
+    $maxBBSize = getBoundingBoxArea($boundingBoxesArr[0]);
     for($i=1 ; $i<count($boundingBoxesArr) ; $i++){
+        $currentBBSize = getBoundingBoxArea($boundingBoxesArr[$i]);
+        if($currentBBSize > $maxBBSize){
+            $maxBBSize = $currentBBSize;
+        }
         trimToIntersection($intersection, $boundingBoxesArr[$i]);
     }
+    $trimmedArea = getBoundingBoxArea($intersection);
+    // if the largest area is at least 10x larger than the intersection, report false
+    if($trimmedArea*10 < $maxBBSize){
+        return false;
+    }
     return (getBoundingBoxArea($intersection) > 0);
-
 }
 
 /**

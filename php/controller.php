@@ -6,81 +6,34 @@ require_once './dbConnect.php';
 error_reporting(E_ALL);
 
 switch($_REQUEST["command"]){
+    
+    case "cacheDistances":
+        
+        for($userId=2 ; $userId<30 ; $userId++){
+            $gridSizes = array(250, 500, 750);
+            foreach($gridSizes as $gridSize){
+                logToFile("Calculatig distance matrix for subject #".$userId." with grid size ".$gridSize."meters");
+                $now = round(microtime(true) * 1000);
+                calculateStoreDistanceMatrix($DB_LINK, $userId, $gridSize);
+                $time = (round(microtime(true) * 1000) - $now) / 1000;
+                logToFile(" Matrix successfully created and saved in " . $time . " seconds.");
+            }
+        }
+        echo "CacheDistances finished.";
+        break;
 
     case "distanceBatch":
         
-        $userId = 3;
+        $userId = 1;
         if(isset($_REQUEST["userId"]) && $_REQUEST["userId"] != ""){
             $userId = $_REQUEST["userId"];
         }
         
         $gridSizeMeters = 500;
         
-        $distanceMatrix = array();
         
-        require_once './loadTrajectories.php';
-        $trajectoryObjects = loadTrajectories(null, true, $userId);
         
-        require_once './trajectorySimilarity.php';
-        $calculationsNum = 0;
-        $records = array();
-        for ($i=0; $i <= count($trajectoryObjects) - 2; $i++){
-            for ($j=$i+1; $j <= count($trajectoryObjects) - 1; $j++){
-                // current pair
-                /* @var $tr1 Trajectory */
-                /* @var $tr2 Trajectory */
-                
-                $tr1 = $trajectoryObjects[$i];
-                $tr2 = $trajectoryObjects[$j];
-                
-                
-                
-                $trajectoryIds = json_encode(array($tr1->id, $tr2->id));
-                $trajectoryLengths = json_encode(array(count($tr1->points), count($tr2->points)));
-                $trajectoryTotalLength = count($tr1->points) + count($tr2->points);
-                
-                // calculate distance
-                $currTime = round(microtime(true) * 1000);
-                $similarity = getTrajectorySimilarity(array($tr1, $tr2), $gridSizeMeters);
-                $timeOfCalculation = round(microtime(true) * 1000) - $currTime;
-                
-                /*
-                $records[] = array(
-                    "trajectoryIds" => $trajectoryIds,
-                    "trajectoryLengths" => $trajectoryLengths,
-                    "trajectoryTotalPointsNum" => $trajectoryTotalLength,
-                    "time" => $timeOfCalculation
-                );
-                 */
-                
-                $record = array(
-                    "trajectoryIds" => "'".$trajectoryIds."'",
-                    "trajectoryLengths" => "'".$trajectoryLengths."'",
-                    "trajectoryTotalPointsNum" => "'".$trajectoryTotalLength."'",
-                    "`time`" => "'".$timeOfCalculation."'"
-                );
-                $query = "INSERT INTO `distance_calculations`(" . implode(", ", array_keys($record)) . ") VALUES (".implode(", ", array_values($record)).")";
-                mysql_query($query);
-                //echo $query;
-                
-                $distanceMatrix[$tr1->id][$tr2->id] = $similarity;
-                $calculationsNum++;
-                
-            }
-        }
-        $matrixJSON = json_encode($distanceMatrix);
-        
-        mysql_query("INSERT INTO `distancematrix`(subjectId, gridSizeMeters, matrixJSON, distanceCalculations) VALUES ('".$userId."', '".$gridSizeMeters."', '".$matrixJSON."', '".$calculationsNum."')");
-        /*
-        $query = "INSERT INTO `distance_calculations`(" . implode(", ", array_keys($records[0])) . ") VALUES ";
-        $queryParts = array();
-        foreach($records as $record){
-            $queryParts[] = "(" . implode(", ", array_values($record)) . ") ";
-        }
-        $query .= implode(", ", $queryParts);
-        
-        mysql_query($query);
-        */
+        calculateStoreDistanceMatrix($DB_LINK, $userId, $gridSizeMeters);
         echo "ready.";
         
         break;
@@ -142,6 +95,7 @@ switch($_REQUEST["command"]){
 
     case "getSimilarity":
 
+        
         require_once './loadTrajectories.php';
         /*
         $trajectoryObjects = loadTrajectories(
@@ -153,11 +107,10 @@ switch($_REQUEST["command"]){
         */
 
 
-        $trajectoryObjects = loadTrajectories(
+        $trajectoryObjects = loadTrajectories($DB_LINK,
                 array(
                     "sampleDataCleaned/003/Trajectory/20081023175854.plt",
                     "sampleDataCleaned/003/Trajectory/20090120002837.plt"
-                    
                     ),
                 true);
 
@@ -232,7 +185,7 @@ switch($_REQUEST["command"]){
         */
 
         $now = microtime();
-        $result = getTrajectorySimilarity($trajectoryObjects, 500);
+        $result = getTrajectorySimilarity($trajectoryObjects, 500, true);
         echo ((microtime() - $now) *1000) . "ns<br>";
         echo $result;
         /*
@@ -482,12 +435,70 @@ switch($_REQUEST["command"]){
 
 
         break;
+        
+    case "testDb":
+        
+        require_once './dbConnect.php';
+        
+        $result = mysqli_query($DB_LINK, "SELECT COUNT(*) AS 'num' FROM `trajectory`");
+        $row = $result->fetch_assoc();
+        echo "<pre>"; print_r($row);
+        mysqli_free_result($result);
+        
+        break;
 
     case "both":
 
         break;
 }
 
+
+function calculateStoreDistanceMatrix($DB_LINK, $userId, $gridSizeMeters){
+    $distanceMatrix = array();
+        
+        require_once './loadTrajectories.php';
+        require_once './trajectorySimilarity.php';
+        
+        
+        $trajectoryObjects = loadTrajectories($DB_LINK, null, true, $userId);
+        
+        $calculationsNum = 0;
+        for ($i=0; $i <= count($trajectoryObjects) - 2; $i++){
+            for ($j=$i+1; $j <= count($trajectoryObjects) - 1; $j++){
+                // current pair
+                /* @var $tr1 Trajectory */
+                /* @var $tr2 Trajectory */
+                
+                $tr1 = $trajectoryObjects[$i];
+                $tr2 = $trajectoryObjects[$j];
+                
+                $trajectoryIds = json_encode(array($tr1->id, $tr2->id));
+                $trajectoryLengths = json_encode(array(count($tr1->points), count($tr2->points)));
+                $trajectoryTotalLength = count($tr1->points) + count($tr2->points);
+                
+                // calculate distance
+                $currTime = round(microtime(true) * 1000);
+                $similarity = getTrajectorySimilarity(array($tr1, $tr2), $gridSizeMeters);
+                $timeOfCalculation = round(microtime(true) * 1000) - $currTime;
+                
+                $record = array(
+                    "trajectoryIds" => "'".$trajectoryIds."'",
+                    "trajectoryLengths" => "'".$trajectoryLengths."'",
+                    "trajectoryTotalPointsNum" => "'".$trajectoryTotalLength."'",
+                    "`time`" => "'".$timeOfCalculation."'"
+                );
+                $query = "INSERT INTO `distance_calculations`(" . implode(", ", array_keys($record)) . ") VALUES (".implode(", ", array_values($record)).")";
+                mysqli_query($DB_LINK, $query);
+                //echo $query;
+                
+                $distanceMatrix[$tr1->id][$tr2->id] = $similarity;
+                $calculationsNum++;
+            }
+        }
+        $matrixJSON = json_encode($distanceMatrix);
+        
+        mysqli_query($DB_LINK, "INSERT INTO `distancematrix`(subjectId, gridSizeMeters, matrixJSON, distanceCalculations) VALUES ('".$userId."', '".$gridSizeMeters."', '".$matrixJSON."', '".$calculationsNum."')");
+}
 
 function errHandle($errNo, $errStr, $errFile, $errLine) {
     $msg = "$errStr in $errFile on line $errLine";
@@ -503,6 +514,8 @@ function errHandle($errNo, $errStr, $errFile, $errLine) {
      * 
      */
 }
+
+$DB_LINK->close();
 
 set_error_handler('errHandle');
 
