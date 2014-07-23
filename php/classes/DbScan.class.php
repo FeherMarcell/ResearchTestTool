@@ -119,48 +119,51 @@ class DbScan {
      */
     private function regionQuery($dataPointIdx){
         $pointData = $this->dataPoints[$dataPointIdx]["data"];
-        //logToFile("Region query of point #" . $this->dataPoints[$dataPointIdx]["data"]->id);
+        logToFile("Region query of point #" . $this->dataPoints[$dataPointIdx]["data"]->id);
         $result = array();
-        // logToFile("total size of dataPoints: " . count($this->dataPoints));
+        logToFile("total size of dataPoints: " . count($this->dataPoints));
         for($idx = 0 ; $idx < count($this->dataPoints) ; $idx++){
             $dataItem = $this->dataPoints[$idx];
         
-            // logToFile("Checking distance of " . $idx." <-> ".$dataPointIdx . ": ");
+            logToFile("Checking distance of " . $idx." <-> ".$dataPointIdx . ": ");
             // the point will always be in it's own region
             if($idx === $dataPointIdx){
                 $result[] = $idx;
-                // logToFile("ITSELF");
+                logToFile("ITSELF");
                 continue;
             }
 
             // check if the similarity is already calculated and retrieve the cached value
             $storedSimilarity = $this->getStoredSimilarity($idx, $dataPointIdx);
             if($storedSimilarity !== false){
-                // logToFile("Stored ");
+                logToFile("Stored ");
                 if($storedSimilarity >= $this->minSimilarity){
-                    // logToFile("similar");
+                    logToFile("similar");
                     $result[] = $idx;
                 }
                 else{
-                    // logToFile("not similar");
+                    logToFile("not similar");
                 }
                 
                 continue;
             }
-            // logToFile("Not stored, calculating and storing...");
+            logToFile("Not stored, calculating and storing...");
             // if it's not stored, calculate and store now
+            $now = round(microtime(true) * 1000);
             $similarity = getTrajectorySimilarity(array($pointData, $dataItem["data"]));
+            $timeInMS = round(microtime(true) * 1000) - $now;
+            logToFile(" -- Similarity calculation took " . $timeInMS . "ms. Total #points:  " . (count($pointData) + count($dataItem["data"])));
             // echo "similarity: " . $similarity; exit;
             
             $this->distanceCalulationsCnt++;
             $this->storeSimilarity($idx, $dataPointIdx, $similarity);
 
             if($similarity >= $this->minSimilarity){
-                // logToFile(" Found similar");
+                logToFile(" Found similar");
                 $result[] = $idx;
             }
             else{
-                // logToFile(" Found NOT similar");
+                logToFile(" Found NOT similar");
             }
                 
         }

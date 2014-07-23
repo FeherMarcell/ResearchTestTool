@@ -3,10 +3,87 @@
 require_once 'fileReader.php';
 require_once './dbConnect.php';
 
-
+error_reporting(E_ALL);
 
 switch($_REQUEST["command"]){
 
+    case "distanceBatch":
+        
+        $userId = 3;
+        if(isset($_REQUEST["userId"]) && $_REQUEST["userId"] != ""){
+            $userId = $_REQUEST["userId"];
+        }
+        
+        $gridSizeMeters = 500;
+        
+        $distanceMatrix = array();
+        
+        require_once './loadTrajectories.php';
+        $trajectoryObjects = loadTrajectories(null, true, $userId);
+        
+        require_once './trajectorySimilarity.php';
+        $calculationsNum = 0;
+        $records = array();
+        for ($i=0; $i <= count($trajectoryObjects) - 2; $i++){
+            for ($j=$i+1; $j <= count($trajectoryObjects) - 1; $j++){
+                // current pair
+                /* @var $tr1 Trajectory */
+                /* @var $tr2 Trajectory */
+                
+                $tr1 = $trajectoryObjects[$i];
+                $tr2 = $trajectoryObjects[$j];
+                
+                
+                
+                $trajectoryIds = json_encode(array($tr1->id, $tr2->id));
+                $trajectoryLengths = json_encode(array(count($tr1->points), count($tr2->points)));
+                $trajectoryTotalLength = count($tr1->points) + count($tr2->points);
+                
+                // calculate distance
+                $currTime = round(microtime(true) * 1000);
+                $similarity = getTrajectorySimilarity(array($tr1, $tr2), $gridSizeMeters);
+                $timeOfCalculation = round(microtime(true) * 1000) - $currTime;
+                
+                /*
+                $records[] = array(
+                    "trajectoryIds" => $trajectoryIds,
+                    "trajectoryLengths" => $trajectoryLengths,
+                    "trajectoryTotalPointsNum" => $trajectoryTotalLength,
+                    "time" => $timeOfCalculation
+                );
+                 */
+                
+                $record = array(
+                    "trajectoryIds" => "'".$trajectoryIds."'",
+                    "trajectoryLengths" => "'".$trajectoryLengths."'",
+                    "trajectoryTotalPointsNum" => "'".$trajectoryTotalLength."'",
+                    "`time`" => "'".$timeOfCalculation."'"
+                );
+                $query = "INSERT INTO `distance_calculations`(" . implode(", ", array_keys($record)) . ") VALUES (".implode(", ", array_values($record)).")";
+                mysql_query($query);
+                //echo $query;
+                
+                $distanceMatrix[$tr1->id][$tr2->id] = $similarity;
+                $calculationsNum++;
+                
+            }
+        }
+        $matrixJSON = json_encode($distanceMatrix);
+        
+        mysql_query("INSERT INTO `distancematrix`(subjectId, gridSizeMeters, matrixJSON, distanceCalculations) VALUES ('".$userId."', '".$gridSizeMeters."', '".$matrixJSON."', '".$calculationsNum."')");
+        /*
+        $query = "INSERT INTO `distance_calculations`(" . implode(", ", array_keys($records[0])) . ") VALUES ";
+        $queryParts = array();
+        foreach($records as $record){
+            $queryParts[] = "(" . implode(", ", array_values($record)) . ") ";
+        }
+        $query .= implode(", ", $queryParts);
+        
+        mysql_query($query);
+        */
+        echo "ready.";
+        
+        break;
 
     case "dbscan":
 
@@ -20,15 +97,15 @@ switch($_REQUEST["command"]){
         $currTime = round(microtime(true) * 1000);
         
         
-        
+        /*
         // get all trajectories of a given user
         $paths = array();
         $query = mysql_query("select `filePath` FROM `trajectory` WHERE `subjectId`='".$userId."' ORDER BY `id`");
         while($row = mysql_fetch_assoc($query)){ $paths[] = $row["filePath"]; }
-
+        */
 
         require_once './loadTrajectories.php';
-        $trajectoryObjects = loadTrajectories($paths, true, null);
+        $trajectoryObjects = loadTrajectories($paths, true, $userId);
 
         //echo "Trajectory Objects:<br>" . implode("<br>", $trajectoryObjects);
 
@@ -38,7 +115,7 @@ switch($_REQUEST["command"]){
         $currTime = round(microtime(true) * 1000);
 
 
-        //require_once './dbscan.php';
+        
         require_once './trajectorySimilarity.php';
         require_once './classes/DbScan.class.php';
         $clusters = DbScan::getClusters($trajectoryObjects);
@@ -78,8 +155,8 @@ switch($_REQUEST["command"]){
 
         $trajectoryObjects = loadTrajectories(
                 array(
-                    "sampleDataCleaned/001/Trajectory/20081023055305.plt",
-                    "sampleDataCleaned/001/Trajectory/20081023234104.plt"
+                    "sampleDataCleaned/003/Trajectory/20081023175854.plt",
+                    "sampleDataCleaned/003/Trajectory/20090120002837.plt"
                     
                     ),
                 true);

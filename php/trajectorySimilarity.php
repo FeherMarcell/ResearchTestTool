@@ -42,8 +42,6 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
 
 
 
-    // TODO 2: Trim the trajectories to the overlapping region and work with these sub-trajectories
-
 
     /*
      * Calculate size of a grid cell in latitude and longitude diffs

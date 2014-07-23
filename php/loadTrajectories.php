@@ -24,7 +24,7 @@ function loadTrajectories($filePathArr, $loadData = false, $subjectId = null) {
         GROUP BY
             t.id
             ";
-        
+        mysql_query("SET SESSION group_concat_max_len = 1000000;");
         $query = mysql_query($baseQueryString);
         
         while ($row = mysql_fetch_assoc($query)) {
@@ -37,6 +37,13 @@ function loadTrajectories($filePathArr, $loadData = false, $subjectId = null) {
                 $longitudes = explode(",", $row["longitudes"]);
                 $times = explode(",", $row["times"]);
                 
+                if(count($latitudes) != count($longitudes) || count($longitudes) != count($times)){
+                    echo "Number of data mismatch at trajectory " . $row["id"] . "!<br>";
+                    echo "Latitudes: " . count($latitudes) ."<br>";
+                    echo "Longitudes: " . count($longitudes) ."<br>";
+                    echo "Times: " . count($times) ."<br>";
+                    return;
+                }
                 
                 $trajectory->points = array();
                 for($i=0 ; $i<count($latitudes) ; $i++){
