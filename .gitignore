@@ -3,3 +3,8 @@
 /samples
 /nbproject
 /php/nbproject
+/php/dbConnect.php
+/datasets/auslan_allsigns
+/datasets/auslan_dataset
+/datasets/forest_covertype
+/datasets/synthetic_control
