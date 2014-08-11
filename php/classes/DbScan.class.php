@@ -16,7 +16,7 @@ class DbScan {
 
     private $distanceCalulationsCnt = 0; // internal counter of number of distance calculations (for stats only)
 
-    public static function getClusters($data, $minSimilarity = 0.5, $minClusterSize = 6){
+    public static function getClusters($data, $minSimilarity = 0.3, $minClusterSize = 6){
 
         $instance = new DbScan($data, $minSimilarity, $minClusterSize);
 
@@ -29,6 +29,13 @@ class DbScan {
         foreach($instance->dataPoints as $item){
             if($item["clusterId"] != null){
                 $clusters[$item["clusterId"]][] = $item["data"];
+            }
+        }
+        // filter out one-element clusters
+        
+        foreach($clusters as $clusterId => $elementsArr){
+            if(count($elementsArr) < 2){
+                unset($clusters[$clusterId]);
             }
         }
         return $clusters;

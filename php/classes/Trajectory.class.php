@@ -28,6 +28,9 @@ class Trajectory implements Serializable{
     private static $points_delimiter = "_";
     private static $parts_delimiter = "|";
 
+    /**
+    @UnTested
+     */
     public function serialize() {
         $arr[] = $this->id; // 0
         $arr[] = $this->subjectId; // 1
@@ -44,7 +47,10 @@ class Trajectory implements Serializable{
         $arr[] = implode(Trajectory::$points_delimiter, $pointsArr);
         return implode(Trajectory::$parts_delimiter, $arr);
     }
-
+    
+    /**
+    @UnTested
+     */
     public function unserialize($serialized) {
 
         $outerArr = explode(Trajectory::$parts_delimiter, $serialized);
