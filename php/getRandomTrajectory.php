@@ -3,10 +3,20 @@
 require_once './dbConnect.php';
 require_once 'fileReader.php';
 
-$query = mysql_query("SELECT `filePath` from `trajectory` WHERE `timespan`>10000 ORDER BY RAND() LIMIT 1");
-$filePath = mysql_result($query, 0, "filePath");
+$result = mysqli_query($DB_LINK, "SELECT `filePath` from `trajectory` WHERE `timespan`>10000 ORDER BY RAND() LIMIT 1");
+$tmp = $result->fetch_array();
+$filePath = $tmp[0];
 echo json_encode(readData($filePath, true, false, true));
 exit;
+
+
+
+
+
+
+
+
+
 
 $trajectoriesFolder = "sampleData";
 

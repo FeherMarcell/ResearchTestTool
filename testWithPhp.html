@@ -23,8 +23,8 @@
     <!--[if IE 7 ]> <body class="ie ie7 "> <![endif]-->
     <!--[if IE 8 ]> <body class="ie ie8 "> <![endif]-->
     <!--[if IE 9 ]> <body class="ie ie9 "> <![endif]-->
-    <!--[if (gt IE 9)|!(IE)]><!--> 
-    <body class=""> 
+    <!--[if (gt IE 9)|!(IE)]><!-->
+    <body class="">
         <!--<![endif]-->
 
         <!-- FELSO KEK SAV (statikus) -->
@@ -33,7 +33,7 @@
                 <a class="brand" href="#"><span class="second">MeetYouThere PHP TestTool</span></a>
             </div>
         </div>
-        
+
         <div class="dialog" id="measurementBox" style="float: left; display: block; width: 1200px; margin-top: 0px">
             <div class="block">
                 <p class="block-heading">Map view</p>
@@ -42,7 +42,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- FELSO KEK SAV VEGE -->
         <div class="dialog" id="dataInputBox" style="float: left; max-height: 70%; margin-bottom: 0px; margin-top: 0px">
             <div class="block">
@@ -53,11 +53,13 @@
                         <button type="button" class="close">×</button>
                         <strong></strong>
                     </div>
-                    
+
                     <!--Fájl tallózása: <input type="file" id="dataFile" />-->
                     <!--<div><input type="number" value="1" min="1" max="6" id="randomTrajectoriesCount" style="width: 20px"/> random <button id="loadRandom" class="btn btn-primary">Load</button></div>-->
                     <!--<button class="btn btn-primary" id="loadRandom">Load random trajectory</button><br/><br/>-->
                     <button class="btn btn-primary" id="loadRandomPair">Load random good pair</button><br/><br/>
+                    <button class="btn btn-primary" id="loadRandomAndNormalize">Load random & normalized</button>
+                    <br/><br/>
                     Load <input type="text" style="width: 40px" id="trajectoriesNum" value="3"/> random trajectories <button class="btn btn-primary" id="loadRandomTrajectories">Go!</button><br/>
                     <button class="btn btn-primary" id="load2Randoms">Load 2 random trajectories</button><br/><br/>
                     <input type="text" id="traj_1" placeholder="1st filepath"/> <span id="traj_1_color" style="width: 8px; background: transparent; height: 1.2em">&nbsp;</span>
@@ -69,7 +71,7 @@
                     <input type="text" id="newMarkerLon" placeholder="Lng" style="width: 40px" />
                     <input type="text" id="newMarkerLat" placeholder="Lat" style="width: 40px" />
                     <button class="btn btn-primary" id="newMarker">Put marker</button><br/>
-                    
+
                 </div>
             </div>
         </div>
@@ -94,28 +96,28 @@
         </div>
 
         <div class="block" style="border: none; padding: 0px; margin: 0px; float: none">
-            
+
             <div class="dialog parameterBox"  style="float: left; margin-bottom: 0px">
                 <div class="block">
                     <p class="block-heading">Set parameters of angle cut algorithm</p>
-                    <div class="block-body"> 
+                    <div class="block-body">
                         <p>
                             Min angle to keep:
                             <input type="text" id="minAngle" value="30" style="width: 40px; text-align: center"/> degrees
-                            
+
                             <div id="toleranceSlider"></div>
                             <div class="pull-left">0.001</div>
                             <div class="pull-right">5</div>
                             Min tolerance in meters:
                             <input type="text" value="5" style="width: 40px;" id="minTolerance"/>
-                            
+
                         </p>
                         <div style="clear: both"></div>
                         <div class="btn btn-primary" id="startAnglecut" style="margin-top: 1em; width: 90%">Compress route!</div>
                     </div>
                 </div>
             </div>
-            
+
             <div class="dialog parameterBox" style="float: left; display: none; margin-bottom: 0px">
                 <div class="block">
                     <p class="block-heading">Set parameters of DP algorithm</p>
@@ -132,7 +134,7 @@
                             -->
                         </p>
                         <p>
-                            Distance measure: 
+                            Distance measure:
                             <input type="radio" name="distanceMeasure" value="degrees" checked="checked"/> degrees &nbsp;&nbsp;&nbsp;&nbsp;
                             <input type="radio" name="distanceMeasure" value="meters"/> meters
                         </p>
@@ -141,7 +143,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!--
             <div class="dialog" style="float: left; margin-bottom: 0px">
                 <div class="block">
@@ -153,16 +155,16 @@
                 </div>
             </div>
             -->
-        </div>    
-        
+        </div>
+
         <!-- Scripts section -->
         <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?libraries=geometry&sensor=false"></script>
         <script src="lib/jquery-1.9.1.min.js" type="text/javascript"></script>
         <script src="lib/jquery-ui-1.10.1.custom.min.js" type="text/javascript"></script>
         <script src="lib/modernizr.lib.js" type="text/javascript"></script>
         <script src="js/testWithPhp.js" type="text/javascript"></script>
-        
-        
+
+
     </body>
 </html>
 

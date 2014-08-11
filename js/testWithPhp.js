@@ -58,15 +58,16 @@ var polyPaths = [ "M -1,-1 1,1 M 1,-1 -1,1", "M -1,0 0,-1 1,0 0,1 z"];
 var polyOptions = {
     strokeOpacity: 1,
     strokeWeight: 3,
-    zIndex: 10,
-    icons: [{
+    zIndex: 10
+    /*
+    ,icons: [{
             icon: {
-                /*path: google.maps.SymbolPath.CIRCLE*/
                 path: "M -1,-1 -1,1 1,1 1,-1 z",
                 fillOpacity: 1
             },
             repeat: '30px'
         }]
+        */
 
 };
 
@@ -79,7 +80,7 @@ var dataFiles = [];
 var availableColors = [];
 var availablePaths = [];
 var displayDataConfig = {
-    showMarkers: false,
+    showMarkers: true,
     showPath: true,
     drawBoundingBox: false,
     clearFirst: false
@@ -87,7 +88,7 @@ var displayDataConfig = {
 
 $(document).ready(function() {
     mapObject = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
-    
+
     google.maps.event.addListener(mapObject, 'rightclick', function(event) {
         console.log("X: " + event.latLng.lng());
         console.log("Y: " + event.latLng.lat());
@@ -106,14 +107,14 @@ $(document).ready(function() {
             $("#gridSize").val(data.gridSize);
             $("#load2Given").trigger("click");
             $("#showGrid").trigger("click");
-            
+
         }, "json");
     });
-    
+
     $("#loadRandomTrajectories").on("click", function(){
         $.post(
-                "php/controller.php", 
-                {command: "getRandoms", trajectoriesCount: $("#trajectoriesNum").val(), gridSizeMeters: $("#gridSize").val(), whichGrid: $('input:radio[name=whichGrid]:checked').val()}, 
+                "php/controller.php",
+                {command: "getRandoms", trajectoriesCount: $("#trajectoriesNum").val(), gridSizeMeters: $("#gridSize").val(), whichGrid: $('input:radio[name=whichGrid]:checked').val()},
                 function(data){
                     availableColors = jQuery.extend(true, [], trajectoryColors);
                     availablePaths = jQuery.extend(true, [], polyPaths);
@@ -124,7 +125,7 @@ $(document).ready(function() {
                     mapObject.fitBounds(bounds);
                 }, "json");
     });
-    
+
     $("#loadRandom").click(function() {
         $.get(
             "php/getRandomTrajectory.php",
@@ -140,7 +141,53 @@ $(document).ready(function() {
             "json"
             );
     });
-    
+
+    $("#loadRandomAndNormalize").click(function(){
+        $.get(
+            "php/getRandomTrajectory.php",
+            function(data) {
+                trajectoryData = data;
+                availableColors = jQuery.extend(true, [], trajectoryColors);
+                availablePaths = jQuery.extend(true, [], polyPaths);
+                displayTrajectoryData(trajectoryData, displayDataConfig);
+                $(".parameterBox").slideDown();
+                normalizeAndShow(trajectoryData, displayDataConfig);
+            },
+            "json"
+            );
+    });
+
+    function normalizeAndShow(trajectory, displayDataConfig){
+        // normalize trajectory
+        var trajectoryLength = trajectory.length;
+        var meanLat = 0, meanLon = 0;
+        for(var idx in trajectory){
+            meanLat += trajectory[idx][0]-0;
+            meanLon += trajectory[idx][1]-0;
+        }
+        meanLat /= trajectoryLength;
+        meanLon /= trajectoryLength;
+
+        // calculate std deviations
+        var devLat = 0, devLon = 0;
+        var sqDiffLat = 0, sqDiffLon = 0;
+        for(idx in trajectory){
+            sqDiffLat += Math.pow(trajectory[idx][0] - meanLat, 2);
+            sqDiffLon += Math.pow(trajectory[idx][1] - meanLon, 2);
+        }
+        devLat = Math.sqrt(sqDiffLat / trajectoryLength);
+        devLon = Math.sqrt(sqDiffLon / trajectoryLength);
+
+        console.log("Std. deviation latitude: " + devLat);
+        console.log("Std. deviation longitude: " + devLon);
+        // normalize trajectory
+        for(idx in trajectory){
+            trajectory[idx] = [ (trajectory[idx][0] - meanLat) / devLat, (trajectory[idx][1] - meanLon) / devLon ];
+        }
+
+        displayTrajectoryData(trajectory, displayDataConfig);
+    }
+
     $("#load2Given").click(function(){
         $("#dataPreview").html("");
         $.post(
@@ -160,7 +207,7 @@ $(document).ready(function() {
                 "json"
                 );
     });
-    
+
     $("#load2Randoms").click(function() {
         $("#dataPreview").html("");
         var commonBounds = new google.maps.LatLngBounds();
@@ -177,7 +224,7 @@ $(document).ready(function() {
                     availablePaths = jQuery.extend(true, [], polyPaths);
                     commonBounds = displayTrajectoryData(data.data, displayDataConfig, null, document.getElementById("traj_1_color"));
                     //$(".parameterBox").slideDown();
-                    
+
                     $.get(
                         "php/getRandomTrajectory.php",
                         function(data) {
@@ -189,7 +236,7 @@ $(document).ready(function() {
                             commonBounds = displayTrajectoryData(data.data, displayDataConfig, commonBounds, document.getElementById("traj_2_color"));
                             mapObject.fitBounds(commonBounds);
                             $(".parameterBox").slideDown();
-                            
+
                             showGrid(commonBounds, 500);
                         },
                         "json"
@@ -197,7 +244,7 @@ $(document).ready(function() {
                 },
                 "json"
                 );
-        
+
     });
 
     $("#startAnglecut").click(function() {
@@ -231,22 +278,22 @@ $(document).ready(function() {
                 "json"
                 );
     });
-    
+
     $("#showGrid").click(function(){
         var bounds;
         var commonBounds = null;
-        
-        $.post("php/controller.php", {command: "getSimilarity", trajectory1: $("#traj_1").val(), trajectory2: $("#traj_2").val()}, 
+
+        $.post("php/controller.php", {command: "getSimilarity", trajectory1: $("#traj_1").val(), trajectory2: $("#traj_2").val()},
         function(result){
             $("#log").html("Similarity: " + result);
         });
         //return;
-        
+
        $.post(
                "php/controller.php",
                 {command: "getGrid", trajectory1: $("#traj_1").val(), trajectory2: $("#traj_2").val(), gridSizeMeters: $("#gridSize").val(), whichGrid: $('input:radio[name=whichGrid]:checked').val()},
                 function(data){
-                    
+
                     clearGrid();
                     if(data.stats !== undefined){
                         $("#log").html("COMMON distance: " + data.stats.common.commonCellsNum + "/" + data.stats.common.allCellsNum + " = <b>" + data.stats.common.similarity + "</b>");
@@ -254,28 +301,28 @@ $(document).ready(function() {
                         $("#log").append("\nSECONDARY: " + data.stats.secondary.commonCellsNum + "/" + data.stats.secondary.allCellsNum + " = " + data.stats.secondary.similarity);
                     }
                     var gridCellFillColor = "#067325";
-                    
+
                     console.log("getGrid info:");
                     for(var idx in data.info){
                         console.log(data.info[idx]);
                     }
                     //console.log("GRID:"); console.log(data.common_grid);
-                    
-                    drawGridFromCoords(data.gridCoords); 
+
+                    drawGridFromCoords(data.gridCoords);
                     if(data.stats === undefined){
                         return;
                     }
-                    
-                    
+
+
                     var fillColor = "", strokeColor = "#000000";
-                    
+
                     var overlayBg = "http://www.stripegenerator.com/generators/generate_stripes.php?fore=000000&h=30&w=40&p=40&back1=ffffff&back2=ff0000&gt=0&d=0&shadow=0&";
                     var overlayConfig = {opacity: .5, map: mapObject};
-                    
+
                     for(var idx in data.common_grid){
                         break;
                         bounds = new google.maps.LatLngBounds(
-                                                                new google.maps.LatLng(data.common_grid[idx].bounds.southWest.lat, data.common_grid[idx].bounds.southWest.lng),        
+                                                                new google.maps.LatLng(data.common_grid[idx].bounds.southWest.lat, data.common_grid[idx].bounds.southWest.lng),
                                                                 new google.maps.LatLng(data.common_grid[idx].bounds.northEast.lat, data.common_grid[idx].bounds.northEast.lng)
                                                                 );
                         if(commonBounds === null){
@@ -285,9 +332,9 @@ $(document).ready(function() {
                             commonBounds.union(bounds);
                         }
                         //gridLines.push(new google.maps.GroundOverlay(overlayBg, bounds, overlayConfig));
-                        
-                        
-                        
+
+
+
                         gridLines.push(new google.maps.Rectangle({
                                         strokeWidth: 0,
                                         strokeOpactiy: 0.3,
@@ -297,9 +344,9 @@ $(document).ready(function() {
                                         bounds: bounds,
                                         zIndex: 0
                                     }));
-                        
-                        
-                       
+
+
+
                                     /*
                         gridLines.push(new google.maps.Marker({
                             map: mapObject,
@@ -310,17 +357,17 @@ $(document).ready(function() {
                     }
                     //mapObject.fitBounds(commonBounds);
                     //return;
-                    
+
                     //Draw usual gridcells
                     var gridBounds = null, bounds = null;
                     for(var latIdx in data.grid){
                         for(var lonIdx in data.grid[latIdx]){
                             if(data.grid[latIdx][lonIdx].crossingTrajectoryIds.length > 0){
                                 //szinezni kell
-                                
+
                                 var inFirst = false;
                                 var inSecond = false;
-                                
+
                                 if(data.grid[latIdx][lonIdx].crossingTrajectoryIds.indexOf(0) !== -1){
                                     // 0. trajectory (is)
                                     fillColor = gridCellFillColor;
@@ -335,25 +382,25 @@ $(document).ready(function() {
                                     inSecond = true;
                                     overlayBg = "http://www.stripegenerator.com/generators/generate_stripes.php?fore=000000&h=30&w=20&p=20&back1=ffffff&back2=ff0000&gt=0&d=0&shadow=0&";
                                 }
-                                
+
                                 if(inFirst && inSecond){
                                     fillColor = gridCellFillColor;
                                 }
                                 /*
                                 gridLines.push(new google.maps.GroundOverlay(
-                                        overlayBg, 
+                                        overlayBg,
                                         new google.maps.LatLngBounds(
-                                                                    new google.maps.LatLng(data.grid[latIdx][lonIdx].bounds.southWest.lat, data.grid[latIdx][lonIdx].bounds.southWest.lng),        
+                                                                    new google.maps.LatLng(data.grid[latIdx][lonIdx].bounds.southWest.lat, data.grid[latIdx][lonIdx].bounds.southWest.lng),
                                                                     new google.maps.LatLng(data.grid[latIdx][lonIdx].bounds.northEast.lat, data.grid[latIdx][lonIdx].bounds.northEast.lng)
-                                                                    ), 
+                                                                    ),
                                         overlayConfig));
-                                        
+
                                 */
                                bounds = new google.maps.LatLngBounds(
-                                                                    new google.maps.LatLng(data.grid[latIdx][lonIdx].bounds.southWest.lat, data.grid[latIdx][lonIdx].bounds.southWest.lng),        
+                                                                    new google.maps.LatLng(data.grid[latIdx][lonIdx].bounds.southWest.lat, data.grid[latIdx][lonIdx].bounds.southWest.lng),
                                                                     new google.maps.LatLng(data.grid[latIdx][lonIdx].bounds.northEast.lat, data.grid[latIdx][lonIdx].bounds.northEast.lng)
                                                                     )
-                                
+
                                 gridLines.push(new google.maps.Rectangle({
                                         strokeWidth: 0,
                                         strokeOpacity: .3,
@@ -364,21 +411,21 @@ $(document).ready(function() {
                                         zIndex: 0,
                                         bounds: bounds
                                     }));
-                                    
+
                                 if(gridBounds === null){
                                     gridBounds = jQuery.extend(null, {}, bounds);
                                 }
                                 else{
                                     gridBounds.union(bounds);
                                 }
-                                
-                                
+
+
                             }
                         }
                     }
                     mapObject.fitBounds(gridBounds);
-                    
-                    
+
+
                     // draw markers
                     /*
                     for(var latIdx in data.grid){
@@ -398,17 +445,17 @@ $(document).ready(function() {
                     */
                 },
                 "json"
-               ); 
+               );
     });
-    
+
     // save trajectory paths to localstorage
     $("#traj_1").on("change", function(){
-       localStorage.setItem("trajectory1", $(this).val()); 
+       localStorage.setItem("trajectory1", $(this).val());
     });
     $("#traj_2").on("change", function(){
-       localStorage.setItem("trajectory2", $(this).val()); 
+       localStorage.setItem("trajectory2", $(this).val());
     });
-    
+
     // load back
     if(localStorage.getItem("trajectory1") !== null){
         $("#traj_1").val(localStorage.getItem("trajectory1"));
@@ -416,7 +463,7 @@ $(document).ready(function() {
     if(localStorage.getItem("trajectory2") !== null){
         $("#traj_2").val(localStorage.getItem("trajectory2"));
     }
-    
+
     $("#newMarker").on("click", function(){
         gridLines.push(new google.maps.Marker({
             map: mapObject,
@@ -429,7 +476,7 @@ var gridLines = [];
 
 function drawGridFromCoords(coords){
     clearGrid();
-    
+
     for(var latIdx in coords.lat){
         gridLines.push( new google.maps.Polyline({
             path: [
@@ -438,7 +485,7 @@ function drawGridFromCoords(coords){
             ],
             strokeColor: '#000000',
             strokeOpacity: .4,
-            
+
             map: mapObject
         }));
     }
@@ -450,7 +497,7 @@ function drawGridFromCoords(coords){
             ],
             strokeColor: '#000000',
             strokeOpacity: .4,
-            
+
             map: mapObject
         }));
     }
@@ -465,18 +512,18 @@ function clearGrid(){
 }
 
 function showGrid(bounds, gridSizeMeters){
-    
+
     clearGrid();
-    
-    console.log("bounds:"); console.log(bounds); 
+
+    console.log("bounds:"); console.log(bounds);
     var avgLatitude = (bounds.getNorthEast().lat() + Math.abs(bounds.getSouthWest().lat()))/2;
     //var degreesDiff = getDegreeDiffAtLatitude(gridSizeMeters, maxLatitude);
     //console.log(gridSizeMeters + " meters diff is " + degreesDiff + " lat diff at max latitude " + avgLatitude);
-    
+
     // vizszintes vonalak (konstans longitude)
     var currentLat = bounds.getNorthEast().lat();
     while(currentLat >= bounds.getSouthWest().lat()){
-        
+
         var currentLine = new google.maps.Polyline({
             path: [
                 new google.maps.LatLng(currentLat, bounds.getNorthEast().lng()),
@@ -494,7 +541,7 @@ function showGrid(bounds, gridSizeMeters){
         console.log("["+currentLat+", "+bounds.getNorthEast().lng()+"]");
         console.log("["+currentLat+", "+bounds.getSouthWest().lng()+"]");
         */
-        
+
         gridLines.push(currentLine);
         currentLat -= ((gridSizeMeters/1000)/6378) * (180/Math.PI);
     }
@@ -516,16 +563,16 @@ function showGrid(bounds, gridSizeMeters){
         */
         currentLine.setMap(mapObject);
         gridLines.push(currentLine);
-    
+
     // fuggoleges vonalak (konstans latitude)
     var currentLon = bounds.getNorthEast().lng();
     // change degreeDiff to latitude degree diff
     //degreesDiff = getLatDegreeDiffAtLatitude(gridSizeMeters, maxLatitude);
     //console.log(gridSizeMeters + " meters diff is " + degreesDiff + " lon diff at max latitude " + maxLatitude);
-    
+
     while(currentLon >= bounds.getSouthWest().lng()){
         //currentLon = bounds.getNorthEast().lng() - (i*degreesDiff);
-        
+
         var currentLine = new google.maps.Polyline({
             path: [
                 new google.maps.LatLng(bounds.getNorthEast().lat(), currentLon),
@@ -565,43 +612,43 @@ function showGrid(bounds, gridSizeMeters){
         currentLine.setMap(mapObject);
         gridLines.push(currentLine);
         currentLon -= ((gridSizeMeters/1000)/6378) * (180/Math.PI) / Math.cos(toRad(avgLatitude));
-    
+
 }
 
 
 var markers = [], mbr = null;
 function displayTrajectoryData(trajectoryData, config, bounds, domElementToColor) {
     //drawBoundingBox = false;
-    
+
     if(bounds === null || bounds === undefined){
         bounds = new google.maps.LatLngBounds();
     }
-    
+
     //convert data points to LatLng objects
     var latLngs = [];
     for (var i = 0; i<trajectoryData.length ; i++){
         latLngs.push(new google.maps.LatLng(trajectoryData[i][0], trajectoryData[i][1]));
         bounds.extend(latLngs[i]);
     }
-    
+
     // latLngs & bounds ready
-    
+
     if (config.clearFirst === true) {
         for (var i = 0; i < trajectoryPolys.length; i++) {
             trajectoryPolys[i].setMap(null);
         }
         trajectoryPolys = [];
-        
+
         // clear markers
         for (i = 0; i < markers.length; i++) {
             markers[i].setMap(null);
             markers[i] = null;
         }
         markers = [];
-        
-        
+
+
     }
-    
+
     if(config.showPath){
         // new path polyLine with random color
         var colorIdx = Math.round(Math.random() * (availableColors.length - 1));
@@ -610,24 +657,24 @@ function displayTrajectoryData(trajectoryData, config, bounds, domElementToColor
             domElementToColor.style.background = availableColors[colorIdx];
         }
         availableColors.splice(colorIdx, 1);
-        
+
         // and random icon
         var pathIdx = Math.round(Math.random() * (availablePaths.length - 1));
-        console.log("paths: "); console.log(availablePaths);
-        console.log("selected: " + pathIdx + ": " + availablePaths[pathIdx]);
-                
+        //console.log("paths: "); console.log(availablePaths);
+        //console.log("selected: " + pathIdx + ": " + availablePaths[pathIdx]);
+        /*
         polyOptions.icons = [{
             icon: {
-                /*path: google.maps.SymbolPath.CIRCLE*/
                 path: availablePaths[pathIdx],
                 fillOpacity: 1
             },
             repeat: '30px'
         }];
-        
+        */
+
         availableColors.splice(pathIdx, 1);
-        console.log("paths after deleting "+pathIdx+": "); console.log(availablePaths);
-        
+        //console.log("paths after deleting "+pathIdx+": "); console.log(availablePaths);
+
         var poly = new google.maps.Polyline(polyOptions);
         poly.setMap(mapObject);
         var path = poly.getPath();
@@ -636,13 +683,12 @@ function displayTrajectoryData(trajectoryData, config, bounds, domElementToColor
         }
         trajectoryPolys.push(poly);
     }
-    
+
     if(config.showMarkers){
         for(i in latLngs){
             markers.push(new google.maps.Marker({
                 position: latLngs[i],
                 title: '#' + i,
-                /*animation: google.maps.Animation.DROP,*/
                 map: mapObject,
                 icon: {
                     path: google.maps.SymbolPath.BACKWARD_CLOSED_ARROW,
@@ -652,39 +698,39 @@ function displayTrajectoryData(trajectoryData, config, bounds, domElementToColor
             }));
         }
     }
-    
-    
-    
+
+
+
     if(config.drawBoundingBox === true){
         if(mbr !== null){
             mbr.setMap(null);
         }
-        
+
         mbr = new google.maps.Rectangle({
             map: mapObject,
             bounds: bounds,
             strokeColor: '#000',
             strokeWidth: 3
         });
-        
+
         //console.log(bounds.getSouthWest());
-        
+
         var sw = new google.maps.LatLng(bounds.getSouthWest().lat() - 0.01,  bounds.getSouthWest().lng() - 0.01);
         var ne = new google.maps.LatLng(bounds.getNorthEast().lat() + 0.01, bounds.getNorthEast().lng() + 0.01);
-        
-        
+
+
         new google.maps.Rectangle({
             map: mapObject,
             bounds: new google.maps.LatLngBounds(
-                    sw, 
+                    sw,
                     ne
                     ),
             strokeColor: '#ff0000',
             strokeWidth: 2
         });
     }
-    
-    
+
+
     mapObject.fitBounds(bounds);
     return bounds;
 }
