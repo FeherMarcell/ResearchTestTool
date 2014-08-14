@@ -105,6 +105,7 @@ $(document).ready(function() {
             $("#traj_1").val(data.path1);
             $("#traj_2").val(data.path2);
             $("#gridSize").val(data.gridSize);
+            
             $("#load2Given").trigger("click");
             $("#showGrid").trigger("click");
 
@@ -194,15 +195,15 @@ $(document).ready(function() {
                 "php/controller.php",
                 {command: "getGivenTrajectories", trajectory1: $("#traj_1").val(), trajectory2: $("#traj_2").val()},
                 function(data){
-                    console.log(data);
+                    
                     availableColors = jQuery.extend(true, [], trajectoryColors);
                     availablePaths = jQuery.extend(true, [], polyPaths);
                     commonBounds = displayTrajectoryData(data.data[0], displayDataConfig, null, document.getElementById("traj_1_color"));
                     displayDataConfig.clearFirst = false;
                     displayTrajectoryData(data.data[1], displayDataConfig, commonBounds, document.getElementById("traj_2_color"));
                     displayDataConfig.clearFirst = true;
-                    console.log("bounds:");
-                    console.log(commonBounds);
+                    //console.log("bounds:");
+                    //console.log(commonBounds);
                 },
                 "json"
                 );
@@ -279,15 +280,26 @@ $(document).ready(function() {
                 );
     });
 
+    function drawGrid(data){
+        // which grid to draw
+        
+    }
+
     $("#showGrid").click(function(){
         var bounds;
         var commonBounds = null;
 
-        $.post("php/controller.php", {command: "getSimilarity", trajectory1: $("#traj_1").val(), trajectory2: $("#traj_2").val()},
+        $.post("php/controller.php", {command: "getSimilarity", trajectory1: $("#traj_1").val(), trajectory2: $("#traj_2").val(), gridSize: $("#gridSize").val(), withGrid: true},
         function(result){
-            $("#log").html("Similarity: " + result);
-        });
-        //return;
+            $("#log").html("Similarity: " + (result.similarity*100).toFixed(2) + "%");
+            
+            drawGrid(result);
+            
+        }, "json");
+        
+        
+        
+        return;
 
        $.post(
                "php/controller.php",

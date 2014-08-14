@@ -15,15 +15,9 @@ define("RAD", (180.0/pi()));
 define("ROW", 0);
 define("COL", 1);
 
-function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggingEnabled = false) {
+function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggingEnabled = false, $withGrids=false) {
     if($loggingEnabled) logToFile("getTrajectorySimilarity started");
-    /*
-    // echo "<pre>";
-    for($i=0 ; $i<count($trajectoryObjects) ; $i++){
-        var_dump($trajectoryObjects[$i]); // echo "<hr/>";
-    }
-    */
-
+   
     $commonBoundingBox = $trajectoryObjects[0]->boundingBox;
 
     // 1: Check if stretched bounding boxes have an overlapping area with positive size
@@ -130,9 +124,10 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
         
         
         
+        /* Merging mainGridCells and SecondaryGridCells */
         
         if($loggingEnabled) logToFile("Merging...");
-        // merge two grids to get the overlap
+        
         $mergedGrid = array();
         foreach($mainGridCells as $row => $colArr){
             foreach($colArr as $col){
@@ -147,7 +142,7 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
                     $localMaxCol = $col + $col;
                 }
                 if(isPointInGrid($secondaryGridCells, $row+1, $col)){
-                    addToGrid($mergedGrid, $row+1 + $row, $col + $col);
+                    addToGrid($mergedGrid, $row + 1 + $row, $col + $col);
                     $localMaxCol = $col + $col;
                 }
                 if(isPointInGrid($secondaryGridCells, $row, $col+1)){
@@ -168,14 +163,12 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
         if($loggingEnabled) logToFile("Merging finished.");
         
         
-
         if($loggingEnabled){
-            logToFile("Secondary grid:");
+            logToFile("Merged grid of trajectory #".($trIdx+1).":");
             foreach($mergedGrid as $key => $arr){
                 logToFile($key . " => [" . implode(", ", $arr) . "]");
             }
         }
-        
         
         // add to mergedGrids
         $mergedGrids[] = $mergedGrid;
@@ -189,7 +182,7 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
     //// echo "<pre>\n".print_r($mergedGrids, true)."</pre><br>";
     // echo "Merged grid keys: " . implode(", ", array_keys($mergedGrids))."<br>";
 
-    // calculate max row
+    // scan for max row index
     $maxRowId = -1;
     foreach($mergedGrids as $mergedGrid){
         $localMax = max(array_keys($mergedGrid));
@@ -222,9 +215,8 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
             }
         }
     }
+    
     // echo "Overlapping cells: <br><pre>".print_r($overlappingCells, true)."</pre><hr>";
-
-
     // echo "Unique cells: " . $distinctMergedCellsNum."<br>";
     // echo "Overlapping cells: " . $overlappingMergedCellsNum."<br>";
 
@@ -238,9 +230,28 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
     if($loggingEnabled) logToFile("Calculated similarity: " . $similarity);
     if($loggingEnabled) logToFile("getTrajectorySimilarity finished");
     
-    return $similarity;
+    
+    if($withGrids){
+        
+        return array(
+            "similarity" => $similarity, 
+            "grids" => array(
+                "main" => $mainGridCells,
+                "secondary" => $secondaryGridCells,
+                "merged" => $mergedGrid
+                ),
+            
+            "cellSize"=> $gridCellSize,
+            "gridCorners" => array(
+                "main" => array($commonBoundingBox[BB_SW][0]-0, $commonBoundingBox[BB_SW][1]-0),
+                "secondary" => array($secondaryGridSouthWest[0], $secondaryGridSouthWest[1])
+                )
+            );
+    }
+    else{
+        return $similarity;
+    }
 
-    //return array("MainGrid" => $mainGridCells, "SecondaryGrid" => $secondaryGridCells, "MergedGrid" => $mergedGrid);
 }
 
 

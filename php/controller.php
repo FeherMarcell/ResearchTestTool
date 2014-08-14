@@ -6,7 +6,7 @@ require_once './dbConnect.php';
 error_reporting(E_ALL);
 
 switch($_REQUEST["command"]){
-
+    
     case "cacheDistances":
 
         for($userId=2 ; $userId<30 ; $userId++){
@@ -21,23 +21,7 @@ switch($_REQUEST["command"]){
         }
         echo "CacheDistances finished.";
         break;
-
-    case "distanceBatch":
-
-        $userId = 1;
-        if(isset($_REQUEST["userId"]) && $_REQUEST["userId"] != ""){
-            $userId = $_REQUEST["userId"];
-        }
-
-        $gridSizeMeters = 500;
-
-
-
-        calculateStoreDistanceMatrix($DB_LINK, $userId, $gridSizeMeters);
-        echo "ready.";
-
-        break;
-
+        
     case "dbscan":
 
         echo "<pre>";
@@ -49,16 +33,8 @@ switch($_REQUEST["command"]){
 
         $currTime = round(microtime(true) * 1000);
 
-
-        /*
-        // get all trajectories of a given user
-        $paths = array();
-        $query = mysql_query("select `filePath` FROM `trajectory` WHERE `subjectId`='".$userId."' ORDER BY `id`");
-        while($row = mysql_fetch_assoc($query)){ $paths[] = $row["filePath"]; }
-        */
-
         require_once './loadTrajectories.php';
-        $trajectoryObjects = loadTrajectories($paths, true, $userId);
+        $trajectoryObjects = loadTrajectories($DB_LINK, null, true, $userId);
 
         //echo "Trajectory Objects:<br>" . implode("<br>", $trajectoryObjects);
 
@@ -72,8 +48,6 @@ switch($_REQUEST["command"]){
         require_once './trajectorySimilarity.php';
         require_once './classes/DbScan.class.php';
         $clusters = DbScan::getClusters($trajectoryObjects);
-
-        //$clusters = ll_dbscan($trajectoryObjects);
 
         logToFile("<b>Clustering took " . (round(microtime(true) * 1000) - $currTime) . "ms</b><br>");
 
@@ -97,22 +71,29 @@ switch($_REQUEST["command"]){
 
 
         require_once './loadTrajectories.php';
-        /*
-        $trajectoryObjects = loadTrajectories(
-                array(
-                    $_REQUEST["trajectory1"],
-                    $_REQUEST["trajectory2"]
-                    ),
-                true);
-        */
-
-
-        $trajectoryObjects = loadTrajectories($DB_LINK,
+        
+        
+        if(isset($_REQUEST["trajectory1"]) && isset($_REQUEST["trajectory1"])){
+            $trajectoryObjects = loadTrajectories($DB_LINK, 
+                    array(
+                        $_REQUEST["trajectory1"],
+                        $_REQUEST["trajectory2"]),
+                    true);
+        }
+        else{
+            $trajectoryObjects = loadTrajectories($DB_LINK,
                 array(
                     "sampleDataCleaned/003/Trajectory/20081023175854.plt",
-                    "sampleDataCleaned/003/Trajectory/20090120002837.plt"
+                    "sampleDataCleaned/003/Trajectory/20081213091636.plt"
                     ),
                 true);
+        }
+        
+        $gridSize = 500;
+        if(isset($_REQUEST["gridSize"])){
+            $gridSize = $_REQUEST["gridSize"];
+        }
+        
 
         require_once './trajectorySimilarity.php';
         /*
@@ -183,11 +164,22 @@ switch($_REQUEST["command"]){
         //echo "Bounding box: \n<pre>".print_r($testTrajectory2->boundingBox, true)."</pre><br>";
         $result = getTrajectorySimilarity(array($testTrajectory, $testTrajectory2), 40000);
         */
+        
+        $withGrids = false;
+        if(isset($_REQUEST["withGrid"]) || in_array("withGrid", array_keys($_REQUEST))){
+            $withGrids = true;
+        }
 
         $now = microtime();
-        $result = getTrajectorySimilarity($trajectoryObjects, 500, true);
-        echo ((microtime() - $now) *1000) . "ns<br>";
-        echo $result;
+        $result = getTrajectorySimilarity($trajectoryObjects, $gridSize, false, $withGrids);
+        //echo ((microtime() - $now) *1000) . "ns<br>";
+        if(is_array($result)){
+            echo json_encode($result);
+        }
+        else{
+            echo $result;
+        }
+        
         /*
         //sort($result["MainGrid"]);
         echo "Main grid: <br>";
@@ -211,6 +203,7 @@ switch($_REQUEST["command"]){
         */
 
         break;
+    
 
     case "generateConfig":
 
@@ -241,52 +234,47 @@ switch($_REQUEST["command"]){
 
     case "generatePairs":
 
-
-        $folder = $_GET["folder"];
-
-        $basePath = "sampleDataCleaned";
-        $trajectoryFilePaths = array();
-        $trajectoryFiles = array();
-        $files = scandir("../" . $basePath. "/" . $folder . "/Trajectory");
-        foreach ($files as $file) {
-            if ($file != "." && $file != ".." && strpos($file, ".plt") !== false) {
-                $trajectoryFilePaths[] = $basePath . "/" . $folder . "/Trajectory/" . $file;
-                $trajectoryFiles[] = readData($basePath . "/" . $folder . "/Trajectory/" . $file);
-            }
+        // generate pairs of trajectories that are similar to each other in the DB
+        
+        $trajectorySetSize = 30;
+        $similarityThreshold = 0.1;
+        
+        
+        /* Clear existing data */
+        //mysqli_query($DB_LINK, "TRUNCATE TABLE `pairmeasurements`");
+        
+        /* Select 2000 random trajectories */
+        
+        require_once './classes/Trajectory.class.php';
+        
+        $result = mysqli_query($DB_LINK, "SELECT `json` FROM `trajectoryjson` ORDER BY rand() LIMIT ".$trajectorySetSize);
+        
+        $trajectories = array();
+        while($row = $result->fetch_array()){
+            $trajectories[] = Trajectory::fromJson($row[0]);
         }
 
-        //echo "<pre>"; print_r($trajectoryFiles); echo "</pre>"; exit;
-
-        //$measurementSizeLimit = 50;
-
-        //$gridSizes = array(500, 700, 1000);
-        $gridSizes = array(500);
-        require_once './dbConnect.php';
-        require_once './getGrid.php';
-        // all pairs
-        for ($i=0; $i <= count($trajectoryFilePaths) - 2; $i++){
-            for ($j=$i+1; $j <= count($trajectoryFilePaths) - 1; $j++){
-                $trajectories = array();
-                $trajectories[] = $trajectoryFiles[$i];
-                $trajectories[] = $trajectoryFiles[$j];
-
-                foreach($gridSizes as $size){
-                    $gridData = getGrid($trajectories, $size, 2);
-                    if($gridData != null && count($gridData["common_grid"]) > 0){
-                        mysql_query("INSERT INTO `pairmeasurements2`(`path1`, `path2`, `gridSize`) VALUES ('".$trajectoryFilePaths[$i]."', '".$trajectoryFilePaths[$j]."', '".$size."')");
-                        /*
-                        $measurementsNum = mysql_result(mysql_query("SELECT COUNT(*) as 'a' FROM `pairmeasurements2"), 0, 'a');
-                        if($measurementsNum >= $measurementSizeLimit){
-                            exit;
-                        }
-                         */
-                    }
+        
+        
+        /* Caluclate similarity of all distinct pairs of the given trajectories */
+        require_once './trajectorySimilarity.php';
+        $goodPairs = 0;
+        // check all distinct pairs
+        for ($i=0; $i <= count($trajectories) - 2; $i++){
+            for ($j=$i+1; $j <= count($trajectories) - 1; $j++){
+                
+                $currentSimilarity = getTrajectorySimilarity(array($trajectories[$i], $trajectories[$j]));
+                
+                /* Persist the pair to DB if similarity exceeds threshold */
+                if($currentSimilarity > $similarityThreshold){
+                    mysqli_query($DB_LINK, "INSERT INTO `pairmeasurements`(`path1`, `path2`, `gridSize`, `similarity`) VALUES ('".$trajectories[$i]->filePath."', '".$trajectories[$j]->filePath."', '500', '".$currentSimilarity."')");
+                    $goodPairs++;
                 }
-
             }
         }
-        echo "done";
-
+        
+        echo $goodPairs . " good pairs with simililarity > ".$similarityThreshold." found and persisted.";
+        
         break;
 
     case "kmeans":

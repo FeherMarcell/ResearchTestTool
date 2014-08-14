@@ -1,16 +1,16 @@
 <?php
 
-class Trajectory implements Serializable{
+class Trajectory /* implements Serializable*/{
     public $id, $subjectId, $filePath, $date, $timeSpan, $boundingBox, $length, $avgLatitude;
     public $points;
 
-    public function __construct($_id, $_subjectId, $_filePath, $_date, $_timeSpan, $_boundingBox, $_length, $_avgLatitude){
+    public function __construct($_id, $_subjectId, $_filePath, $_date, $_timeSpan, $_boundingBoxString, $_length, $_avgLatitude){
       $this->id = $_id;
       $this->subjectId = $_subjectId;
       $this->filePath = $_filePath;
       $this->date = $_date;
       $this->timeSpan = $_timeSpan;
-      $tmp = explode(" ", $_boundingBox);
+      $tmp = explode(" ", $_boundingBoxString);
       $this->boundingBox = array(
          array($tmp[0], $tmp[1]),
          array($tmp[2], $tmp[3])
@@ -18,19 +18,43 @@ class Trajectory implements Serializable{
       $this->length = $_length;
       $this->avgLatitude = $_avgLatitude;
     }
-
+    
+    public static function fromJson($json){
+        $arr = json_decode($json, true);
+        
+        $tr = new Trajectory(
+                $arr["id"], 
+                $arr["subjectId"], 
+                $arr["filePath"], 
+                $arr["date"], 
+                $arr["timeSpan"], 
+                $arr["boundingBox"][0][0]." ".$arr["boundingBox"][0][1]." ".$arr["boundingBox"][1][0]." ".$arr["boundingBox"][1][1],
+                $arr["length"], 
+                $arr["avgLatitude"]);
+        
+        $tr->points = $arr["points"];
+        
+        return $tr;
+    }
+    
     public function __toString() {
         return "Trajectory #$this->id [$this->filePath]";
     }
 
+    
+    /* DO NOT USE serialize() and deserialize(), JSON representation is faster to encode & decode */
+    
     /* Delimiter characters used for serialization and deserialization of the object */
+    /*
     private static $internal_delimiter = "*";
     private static $points_delimiter = "_";
     private static $parts_delimiter = "|";
-
+    */
+    
     /**
     @UnTested
      */
+    /*
     public function serialize() {
         $arr[] = $this->id; // 0
         $arr[] = $this->subjectId; // 1
@@ -47,10 +71,12 @@ class Trajectory implements Serializable{
         $arr[] = implode(Trajectory::$points_delimiter, $pointsArr);
         return implode(Trajectory::$parts_delimiter, $arr);
     }
+    */
     
     /**
     @UnTested
      */
+    /*
     public function unserialize($serialized) {
 
         $outerArr = explode(Trajectory::$parts_delimiter, $serialized);
@@ -68,5 +94,6 @@ class Trajectory implements Serializable{
 
         return $trajectory;
     }
+    */
 
 }
