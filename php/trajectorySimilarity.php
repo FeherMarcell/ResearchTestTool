@@ -61,7 +61,12 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
 
     $mergedGrids = array();
     $maxColIdx = 0;
-
+    
+    if($withGrids){
+        // save all mainGrids and secondaryGrids
+        $mainGrids = array();
+        $secondaryGrids = array();
+    }
     
     
     // 3: For each trajectory, translate the original lat/lng points to double mesh coordinates
@@ -99,13 +104,16 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
          */
 
 
-        $mainGridCells = markTrajectory($trajectory, $gridCellSize, $commonBoundingBox[BB_SW]);
+        $mainGridCells = markTrajectory($trajectory, $gridCellSize, $commonBoundingBox[BB_SW], $loggingEnabled);
         
         if($loggingEnabled){
             logToFile("Main grid:");
             foreach($mainGridCells as $key => $arr){
                 logToFile($key . " => [" . implode(", ", $arr) . "]");
             }
+        }
+        if($withGrids){
+            $mainGrids[] = $mainGridCells;
         }
         
         // Secondary grid, shifted
@@ -120,6 +128,9 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
             foreach($secondaryGridCells as $key => $arr){
                 logToFile($key . " => [" . implode(", ", $arr) . "]");
             }
+        }
+        if($withGrids){
+            $secondaryGrids[] = $secondaryGridCells;
         }
         
         
@@ -233,12 +244,45 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
     
     if($withGrids){
         
+        // merging mainGrids
+        $mainGridTmp = $mainGrids[0];
+        for($i=1 ; $i<count($mainGrids) ; $i++){
+            foreach($mainGrids[$i] as $row => $colArr){
+                foreach($colArr as $col){
+                    addToGrid($mainGridTmp, $row, $col);
+                }
+            }
+        }
+        
+        
+        // flattening grids to 1 dimension
+        $mainGrid = array();
+        foreach($mainGridTmp as $row => $colArr){
+            foreach($colArr as $col){
+                $mainGrid[] = array($row, $col);
+            }
+        }
+        
+        $secondaryGrid = array();
+        foreach($secondaryGridCells as $row => $colArr){
+            foreach($colArr as $col){
+                $secondaryGrid[] = array($row, $col);
+            }
+        }
+        $mergedGridCells = array();
+        foreach($mergedGrid as $row => $colArr){
+            foreach($colArr as $col){
+                $mergedGridCells[] = array($row, $col);
+            }
+        }
+        
+        
         return array(
             "similarity" => $similarity, 
             "grids" => array(
-                "main" => $mainGridCells,
-                "secondary" => $secondaryGridCells,
-                "merged" => $mergedGrid
+                "main" => $mainGrid,
+                "secondary" => $secondaryGrid,
+                "merged" => $mergedGridCells
                 ),
             
             "cellSize"=> $gridCellSize,
@@ -270,7 +314,7 @@ function isPointInGrid(&$grid, $row, $col){
     return in_array($row, array_keys($grid)) && in_array($col, $grid[$row]);
 }
 
-function markTrajectory(&$trajectory, $gridCellSize, $gridSouthWest){
+function markTrajectory(&$trajectory, $gridCellSize, $gridSouthWest, $loggingEnabled=false){
         /* @var $trajectory Trajectory */
 
         // logToFile("markTrajectory called for trajectory " . $trajectory->id);
@@ -300,18 +344,28 @@ function markTrajectory(&$trajectory, $gridCellSize, $gridSouthWest){
             else if($edgeStartCoords[ROW] == $edgeEndCoords[ROW]){
                 // horizontal line
                 // echo "<br>horizontal line";
-                $increment = ($edgeStartCoords[COL] < $edgeEndCoords[COL]) ? +1 : -1;
-                for($edgeStartCoords[COL] ; $edgeStartCoords[COL] <= $edgeEndCoords[COL] ; $edgeStartCoords[COL] += $increment){
-                    addToGrid($gridCells, $edgeStartCoords[ROW], $edgeStartCoords[COL]);
+                if($loggingEnabled){
+                    logToFile("Horizontal line at col ".$edgeStartCoords[ROW]." between ".$edgeStartCoords[COL]." - ".$edgeEndCoords[COL]);
+                }
+                
+                foreach(range($edgeStartCoords[COL], $edgeEndCoords[COL]) as $col){
+                    if($loggingEnabled){
+                        logToFile("Adding (".$edgeStartCoords[ROW].",".$col.")");
+                    }
+                    addToGrid($gridCells, $edgeStartCoords[ROW], $col);
                 }
             }
             else if($edgeStartCoords[COL] == $edgeEndCoords[COL]){
                 // vertical line
+                if($loggingEnabled){
+                    logToFile("Vertical line at col ".$edgeStartCoords[COL]." between ".$edgeStartCoords[ROW]." - ".$edgeEndCoords[ROW]);
+                }
                 // echo "<br>vertical line";
-                
-                $increment = ($edgeStartCoords[ROW] < $edgeEndCoords[ROW]) ? 1 : -1;
-                for($edgeStartCoords[ROW] ; $edgeStartCoords[ROW] <= $edgeEndCoords[ROW] ; $edgeStartCoords[ROW] += $increment){
-                    addToGrid($gridCells, $edgeStartCoords[ROW], $edgeStartCoords[COL]);
+                foreach(range($edgeStartCoords[ROW], $edgeEndCoords[ROW]) as $row){
+                    if($loggingEnabled){
+                        logToFile("Adding (".$row.",".$edgeStartCoords[COL].")");
+                    }
+                    addToGrid($gridCells, $row, $edgeStartCoords[COL]);
                 }
             }
             else{
@@ -425,10 +479,10 @@ function markCellsOfLine(&$grid, $startPoint, $endPoint, $startPointCoords, $end
        $cachedCurrentYCoord = $currentYCoord;
        
        // loop and mark cells between prevYCoord and currentYCoord
-       $increment = ($currentYCoord <= $prevYCoord) ? 1 : -1;
-       for($currentYCoord ; $currentYCoord <= $prevYCoord ; $currentYCoord += $increment){
-           addToGrid($grid, $startXCoord, $currentYCoord);
+       foreach(range($currentYCoord, $prevYCoord) as $yCoord){
+           addToGrid($grid, $startXCoord, $yCoord);
        }
+       
        // set the cached Y coord for the next iteration
        $prevYCoord = $cachedCurrentYCoord;
        
@@ -464,8 +518,8 @@ function addToGrid(&$grid, $row, $col){
  */
 function calculateGridCoordOfPoint(&$gridSouthWest, &$gridCellSize, &$point){
     return array(
-        ROW => floor(($point[LNG] - $gridSouthWest[LNG]) / $gridCellSize[LNG]),
-        COL => floor(($point[LAT] - $gridSouthWest[LAT]) / $gridCellSize[LAT])
+        ROW => max(0, floor(($point[LNG] - $gridSouthWest[LNG]) / $gridCellSize[LNG])),
+        COL => max(0, floor(($point[LAT] - $gridSouthWest[LAT]) / $gridCellSize[LAT]))
     );
 }
 

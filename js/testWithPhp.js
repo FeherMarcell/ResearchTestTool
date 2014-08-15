@@ -86,6 +86,10 @@ var displayDataConfig = {
     clearFirst: false
 };
 
+var similarityData = null;
+var mainGridPolys = [];
+var mainCells = [];
+
 $(document).ready(function() {
     mapObject = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
 
@@ -280,8 +284,109 @@ $(document).ready(function() {
                 );
     });
 
-    function drawGrid(data){
+    
+
+    function drawGrid(){
         // which grid to draw
+        var maxRow = 0, maxCol = 0;
+        
+        
+        // clear 
+        for(var idx in mainGridPolys){
+            mainGridPolys[idx].setMap(null);
+            delete mainGridPolys[idx];
+        }
+        for(idx in mainCells){
+            mainCells[idx].setMap(null);
+            delete mainCells[idx];
+        }
+                
+        console.log("Grid to show: " + ($("input[name=whichGrid]:checked").val()-0));
+        switch($("input[name=whichGrid]:checked").val()-0){
+            case 0: // secondary
+                
+                break;
+            case 1: // main
+                
+                // calculate max row and max col
+                
+                for(var idx in similarityData.grids.main){
+                    if(similarityData.grids.main[idx][0] > maxRow){ maxRow = similarityData.grids.main[idx][0]; }
+                    if(similarityData.grids.main[idx][1] > maxCol){ maxCol = similarityData.grids.main[idx][1]; }
+                }
+                console.log("Main grid size: " + maxRow + "x" + maxCol);
+                
+                
+                for(var colIdx = 0 ; colIdx <= maxCol+1 ; colIdx++){
+                    mainGridPolys.push(new google.maps.Polyline({
+                        path: [
+                            new google.maps.LatLng(
+                                    similarityData.gridCorners.main[0] + colIdx*similarityData.cellSize[0], 
+                                    similarityData.gridCorners.main[1]),
+                                    
+                            new google.maps.LatLng(
+                                    similarityData.gridCorners.main[0] + colIdx*similarityData.cellSize[0],
+                                    similarityData.gridCorners.main[1] + (maxRow+1)*similarityData.cellSize[1])
+                        ],
+                        strokeColor: "#FF0000",
+                        strokeWidth: 1,
+                        strokeOpacity: .3,
+                        map: mapObject
+                    }));
+                }
+                for(var rowIdx=0 ; rowIdx <= maxRow+1 ; rowIdx++){
+                    mainGridPolys.push(new google.maps.Polyline({
+                        path: [
+                            new google.maps.LatLng(
+                                    similarityData.gridCorners.main[0],
+                                    similarityData.gridCorners.main[1] + rowIdx*similarityData.cellSize[1]
+                                    ),
+                                    
+                            new google.maps.LatLng(
+                                    similarityData.gridCorners.main[0] + (maxCol+1)*similarityData.cellSize[0],
+                                    similarityData.gridCorners.main[1] + rowIdx*similarityData.cellSize[1]
+                                    )
+                        ],
+                        strokeColor: "#FF0000",
+                        strokeWidth: 1,
+                        strokeOpacity: .3,
+                        map: mapObject
+                    }));
+                }
+                
+                
+                // draw filled rectangles
+                for(var idx in similarityData.grids.main){
+                    console.log(similarityData.grids.main[idx]);
+                    mainCells.push(new google.maps.Rectangle({
+                        map: mapObject,
+                        fillColor: "#ff0000",
+                        fillOpacity: .3,
+                        strokeWitdh: 0,
+                        bounds: new google.maps.LatLngBounds(
+                            // sw
+                            new google.maps.LatLng(
+                                similarityData.gridCorners.main[0] + (similarityData.cellSize[0]*similarityData.grids.main[idx][1]),
+                                similarityData.gridCorners.main[1] + (similarityData.cellSize[1]*similarityData.grids.main[idx][0])
+                            ),
+                            // ne
+                            new google.maps.LatLng(
+                                similarityData.gridCorners.main[0] + (similarityData.cellSize[0]*(similarityData.grids.main[idx][1]+1)),
+                                similarityData.gridCorners.main[1] + (similarityData.cellSize[1]*(similarityData.grids.main[idx][0]+1))
+                            )
+                        )
+                    }));
+                }
+                
+                break;
+            case 2:  // merged
+                
+                break;
+            default: // none
+                break;
+        }
+        
+        
         
     }
 
@@ -292,8 +397,8 @@ $(document).ready(function() {
         $.post("php/controller.php", {command: "getSimilarity", trajectory1: $("#traj_1").val(), trajectory2: $("#traj_2").val(), gridSize: $("#gridSize").val(), withGrid: true},
         function(result){
             $("#log").html("Similarity: " + (result.similarity*100).toFixed(2) + "%");
-            
-            drawGrid(result);
+            similarityData = result;
+            drawGrid();
             
         }, "json");
         
@@ -351,7 +456,7 @@ $(document).ready(function() {
                                         strokeWidth: 0,
                                         strokeOpactiy: 0.3,
                                         fillColor: gridCellFillColor,
-                                        fillOpacity: .8,
+                                        fillOpacity: .3,
                                         map: mapObject,
                                         bounds: bounds,
                                         zIndex: 0
@@ -418,7 +523,7 @@ $(document).ready(function() {
                                         strokeOpacity: .3,
                                         strokeColor: strokeColor,
                                         fillColor: fillColor,
-                                        fillOpacity: .4,
+                                        fillOpacity: .2,
                                         map: mapObject,
                                         zIndex: 0,
                                         bounds: bounds

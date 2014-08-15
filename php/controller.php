@@ -171,7 +171,7 @@ switch($_REQUEST["command"]){
         }
 
         $now = microtime();
-        $result = getTrajectorySimilarity($trajectoryObjects, $gridSize, false, $withGrids);
+        $result = getTrajectorySimilarity($trajectoryObjects, $gridSize, true, $withGrids);
         //echo ((microtime() - $now) *1000) . "ns<br>";
         if(is_array($result)){
             echo json_encode($result);
