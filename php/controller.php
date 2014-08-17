@@ -236,7 +236,7 @@ switch($_REQUEST["command"]){
 
         // generate pairs of trajectories that are similar to each other in the DB
         
-        $trajectorySetSize = 30;
+        $trajectorySetSize = 50;
         $similarityThreshold = 0.1;
         
         
@@ -253,8 +253,6 @@ switch($_REQUEST["command"]){
         while($row = $result->fetch_array()){
             $trajectories[] = Trajectory::fromJson($row[0]);
         }
-
-        
         
         /* Caluclate similarity of all distinct pairs of the given trajectories */
         require_once './trajectorySimilarity.php';
@@ -262,12 +260,12 @@ switch($_REQUEST["command"]){
         // check all distinct pairs
         for ($i=0; $i <= count($trajectories) - 2; $i++){
             for ($j=$i+1; $j <= count($trajectories) - 1; $j++){
-                
-                $currentSimilarity = getTrajectorySimilarity(array($trajectories[$i], $trajectories[$j]));
-                
+                $now = microtime(true);
+                $result = getTrajectorySimilarity(array($trajectories[$i], $trajectories[$j]), 500, false, false, true);
+                $timeElapsedMS = (microtime(true) - $now)*1000;
                 /* Persist the pair to DB if similarity exceeds threshold */
-                if($currentSimilarity > $similarityThreshold){
-                    mysqli_query($DB_LINK, "INSERT INTO `pairmeasurements`(`path1`, `path2`, `gridSize`, `similarity`) VALUES ('".$trajectories[$i]->filePath."', '".$trajectories[$j]->filePath."', '500', '".$currentSimilarity."')");
+                if($result[0] > $similarityThreshold){
+                    mysqli_query($DB_LINK, "INSERT INTO `pairmeasurements`(`path1`, `path2`, `gridSize`, `similarity`, `timeOfCalcMS`, `gridCellsNum`) VALUES ('".$trajectories[$i]->filePath."', '".$trajectories[$j]->filePath."', '500', '".$result[0]."', '".$timeElapsedMS."', '".$result[1]."')");
                     $goodPairs++;
                 }
             }

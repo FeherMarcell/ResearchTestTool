@@ -15,7 +15,7 @@ define("RAD", (180.0/pi()));
 define("ROW", 0);
 define("COL", 1);
 
-function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggingEnabled = false, $withGrids=false) {
+function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggingEnabled = false, $withGrids=false, $returnGridsize=false) {
     if($loggingEnabled) logToFile("getTrajectorySimilarity started");
    
     $commonBoundingBox = $trajectoryObjects[0]->boundingBox;
@@ -253,6 +253,22 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
                 }
             }
         }
+        $secondaryGridTmp = $secondaryGrids[0];
+        for($i=1 ; $i<count($secondaryGrids) ; $i++){
+            foreach($secondaryGrids[$i] as $row => $colArr){
+                foreach($colArr as $col){
+                    addToGrid($secondaryGridTmp, $row, $col);
+                }
+            }
+        }
+        $mergedGridTmp = $mergedGrids[0];
+        for($i=1 ; $i<count($mergedGrids) ; $i++){
+            foreach($mergedGrids[$i] as $row => $colArr){
+                foreach($colArr as $col){
+                    addToGrid($mergedGridTmp, $row, $col);
+                }
+            }
+        }
         
         
         // flattening grids to 1 dimension
@@ -264,13 +280,13 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
         }
         
         $secondaryGrid = array();
-        foreach($secondaryGridCells as $row => $colArr){
+        foreach($secondaryGridTmp as $row => $colArr){
             foreach($colArr as $col){
                 $secondaryGrid[] = array($row, $col);
             }
         }
         $mergedGridCells = array();
-        foreach($mergedGrid as $row => $colArr){
+        foreach($mergedGridTmp as $row => $colArr){
             foreach($colArr as $col){
                 $mergedGridCells[] = array($row, $col);
             }
@@ -289,8 +305,17 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
             "gridCorners" => array(
                 "main" => array($commonBoundingBox[BB_SW][0]-0, $commonBoundingBox[BB_SW][1]-0),
                 "secondary" => array($secondaryGridSouthWest[0], $secondaryGridSouthWest[1])
+                ),
+            
+            "stats" => array(
+                "allCells" => $distinctMergedCellsNum,
+                "overlappingCells" => $overlappingMergedCellsNum,
+                "cells" => $overlappingCells
                 )
             );
+    }
+    else if($returnGridsize){
+        return array($similarity, ($maxColIdx+1)*($maxRowId+1));
     }
     else{
         return $similarity;
@@ -311,7 +336,8 @@ function findCellInGrids(&$gridsArr, $row, $col){
 }
 
 function isPointInGrid(&$grid, $row, $col){
-    return in_array($row, array_keys($grid)) && in_array($col, $grid[$row]);
+    return @(($grid[$row] !== null && in_array($col, $grid[$row])));
+    //return (in_array($row, array_keys($grid)) && in_array($col, $grid[$row])) || (in_array($col, array_keys($grid)) && in_array($row, $grid[$col]));
 }
 
 function markTrajectory(&$trajectory, $gridCellSize, $gridSouthWest, $loggingEnabled=false){
@@ -491,20 +517,17 @@ function markCellsOfLine(&$grid, $startPoint, $endPoint, $startPointCoords, $end
 }
 
 function addToGrid(&$grid, $row, $col){
-    // this is the first element
-    if(!in_array($row, array_keys($grid))){
+    // this is the first element to the given row
+    if(@($grid[$row] === null)){
         $grid[$row][] = $col;
         return;
     }
-    // check if element is already in the array
-    foreach($grid[$row] as $el){
-        if($el === $col){
-            // found, no need to push it again
-            return;
-        }
+    
+    // add new element if it's not already present in the array
+    if(!in_array($col, $grid[$row])){
+        $grid[$row][] = $col;
     }
-    // otherwise add it to the array
-    $grid[$row][] = $col;
+    return;
 }
 
 /**
