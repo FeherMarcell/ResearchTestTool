@@ -15,11 +15,13 @@ define("RAD", (180.0/pi()));
 define("ROW", 0);
 define("COL", 1);
 
-function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggingEnabled = false, $withGrids=false, $returnGridsize=false) {
+function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggingEnabled = false, $withGrids=false, $returnStats=false) {
     if($loggingEnabled) logToFile("getTrajectorySimilarity started");
    
     $commonBoundingBox = $trajectoryObjects[0]->boundingBox;
 
+    if($returnStats){ $times = array(); $now = microtime(true); }
+    
     // 1: Check if stretched bounding boxes have an overlapping area with positive size
     if(count($trajectoryObjects) > 1){
         $stretchedBoxes = getStretchedBoundingBoxes($trajectoryObjects, $gridSizeMeters);
@@ -32,7 +34,11 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
             expandBoundingBox($commonBoundingBox, $trajectoryObjects[$i]->boundingBox);
         }
     }
-
+    
+    if($returnStats){ 
+        $times["bounding"] =  (microtime(true) - $now)*1000; 
+        $now = microtime(true); 
+    }
 
 
 
@@ -57,10 +63,14 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
         LNG => $gridCellLon
     );
 
+    if($returnStats){  $times["gridsize"] =  (microtime(true) - $now)*1000; }
+    
     // echo "Grid cell size: height: $gridCellLat, width: $gridCellLon<br>";
 
     $mergedGrids = array();
     $maxColIdx = 0;
+    
+    
     
     if($withGrids){
         // save all mainGrids and secondaryGrids
@@ -68,6 +78,7 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
         $secondaryGrids = array();
     }
     
+    if($returnStats){  $times["markTrajectory"] = 0; $times["merging"] = 0; }
     
     // 3: For each trajectory, translate the original lat/lng points to double mesh coordinates
     for ($trIdx = 0 ; $trIdx < count($trajectoryObjects) ; $trIdx++) {
@@ -103,8 +114,11 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
          * ]
          */
 
-
+        if($returnStats){  $now = microtime(true); }
         $mainGridCells = markTrajectory($trajectory, $gridCellSize, $commonBoundingBox[BB_SW], $loggingEnabled);
+        if($returnStats){  
+            $times["markTrajectory"] += (microtime(true) - $now)*1000;
+        }
         
         if($loggingEnabled){
             logToFile("Main grid:");
@@ -116,12 +130,17 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
             $mainGrids[] = $mainGridCells;
         }
         
+        if($returnStats){  $now = microtime(true); }
         // Secondary grid, shifted
         $secondaryGridSouthWest = array(
             LNG => $commonBoundingBox[BB_SW][LNG] - ($gridCellSize[LNG] / 2),
             LAT => $commonBoundingBox[BB_SW][LAT] - ($gridCellSize[LAT] / 2)
         );
         $secondaryGridCells = markTrajectory($trajectory, $gridCellSize, $secondaryGridSouthWest);
+        
+        if($returnStats){  
+            $times["markTrajectory"] += (microtime(true) - $now)*1000;
+        }
         
         if($loggingEnabled){
             logToFile("Secondary grid:");
@@ -139,6 +158,7 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
         
         if($loggingEnabled) logToFile("Merging...");
         
+        if($returnStats){  $now = microtime(true); }
         $mergedGrid = array();
         foreach($mainGridCells as $row => $colArr){
             foreach($colArr as $col){
@@ -171,6 +191,11 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
                 }
             }
         }
+        // add to mergedGrids
+        $mergedGrids[] = $mergedGrid;
+        
+        if($returnStats){  $times["merging"] += 1000*(microtime(true)-$now); }
+        
         if($loggingEnabled) logToFile("Merging finished.");
         
         
@@ -181,8 +206,7 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
             }
         }
         
-        // add to mergedGrids
-        $mergedGrids[] = $mergedGrid;
+        
     }
     
 
@@ -194,6 +218,8 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
     // echo "Merged grid keys: " . implode(", ", array_keys($mergedGrids))."<br>";
 
     // scan for max row index
+    
+    if($returnStats){ $now = microtime(true); }
     $maxRowId = -1;
     foreach($mergedGrids as $mergedGrid){
         $localMax = max(array_keys($mergedGrid));
@@ -201,15 +227,16 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
             $maxRowId = $localMax;
         }
     }
+    if($returnStats){ $times["findMaxRow"] = 1000*(microtime(true) - $now); $times["gridCellsNum"] = $maxColIdx*$maxRowId; }
 
     // echo "Max row: " . $maxRowId."<br>";
     // echo "Max col: " . $maxColIdx."<br>";
-    $numGrids = count($mergedGrids);
-    $overlappingMergedCellsNum = 0;
-    $distinctMergedCellsNum = 0;
-
+    
+    
+    
+    /*
+    if($returnStats){ $now = microtime(true); }
     $overlappingCells = array();
-
     for($row = 0 ; $row <= $maxRowId ; $row++){
         for($col = 0 ; $col <= $maxColIdx ; $col++){
             // check all merged grids, count that in how many ($row, $col) is present
@@ -226,6 +253,178 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
             }
         }
     }
+    if($returnStats){ $times["countSimilarity"] = 1000*(microtime(true) - $now); }
+    */
+    
+    $overlappingMergedCellsNum = 0;
+    $distinctMergedCellsNum = 0;
+    $overlappingCells = array();
+    
+    if($returnStats){ $now = microtime(true); }
+    //echo "<pre>";
+    $mergedGridsObject = new ArrayObject($mergedGrids);
+    $grids = $mergedGridsObject->getArrayCopy();
+    
+    //for($i=0 ; $i< count($grids) ; $i++){
+        //echo "Grid #".$i."<br>";
+        //printGrid($grids[$i]);
+    //}
+    //echo "<hr>";
+    
+    $gridsNum = count($grids);
+    $gridRowCtr = 0;
+    foreach($grids as $mergedGridIdx => $mergedGrid){
+        
+        $currentGrid = $grids[$mergedGridIdx];
+        unset($grids[$mergedGridIdx]);
+        
+        //echo "Checking Grid#".$mergedGridIdx."<br>";
+        //printGrid($currentGrid);
+        
+        
+        // loop all elements of $currentGrid
+        foreach($currentGrid as $row => $colIdx){
+            foreach($colIdx as $col){
+                $distinctMergedCellsNum++;
+                //echo "Current point: [".$row.", ".$col."]<br>";
+                // check if ($row, $col) is present in any other/remaining grids
+                $fieldCounter = 0;
+                foreach($grids as $idx => $g){
+                    if(!in_array($row, array_keys($g)) || $g[$row] == NULL){
+                        continue;
+                    }
+                    $gridRowCtr++;
+                    
+                    $pos = @array_search($col, $g[$row]);
+                    if($pos !== FALSE){
+                        //echo "point found in grid ". $idx . ", deleting<br>";
+                        $fieldCounter++;
+                        
+                        //echo "Grid before deleting:<br>";
+                        //printGrid($grids[$idx]);
+                        
+                        array_splice($grids[$idx][$row], $pos, 1);
+                        //unset($grids[$idx][$row][$col]);
+                        
+                        //echo "Grid after deleting:<br>";
+                        //printGrid($grids[$idx]);
+                    }
+                }
+                
+                if($fieldCounter == $gridsNum-1){
+                    //echo "Point [".$row.", ".$col."] found in all grids<br>";
+                    $overlappingMergedCellsNum++;
+                    $overlappingCells[] = array(ROW => $row, COL => $col);
+                }
+            }
+        }
+        
+        
+    }
+    if($returnStats){ $times["countSimilarity"] = 1000*(microtime(true) - $now); $times["gridRowCtr"] = $gridRowCtr; }
+    
+    
+    
+    
+    
+    /*
+    if($returnStats){ $now = microtime(true); }
+    
+    // flatten mergedgrids
+    $grids = array();
+    for($i=0 ; $i<count($mergedGrids) ; $i++){
+        
+        $currentGrid = array();
+        foreach($mergedGrids[$i] as $row => $colArr){
+            foreach($colArr as $col){
+                $currentGrid[] = array($row, $col);
+            }
+        }
+        $grids[] = $currentGrid;
+    }
+    
+    if($returnStats){
+        // count points of all grids
+        $allPointCtr = 0;
+        for($i=0 ; $i<count($grids) ; $i++){
+            $allPointCtr += count($grids[$i]);
+        }
+        $times["cellsNum"] = $allPointCtr;
+    }
+    
+    
+    echo"<pre>"; //print_r($grids);
+    for($i=0 ; $i<count($grids) ; $i++){
+        echo"<br>Grid #".$i."<br>";
+        foreach($grids[$i] as $key => $arr){
+            echo" ".$key . " => [" . implode(", ", array_values($arr)) . "]<br>";
+        }
+    }
+    echo"<hr><br>";
+    
+    
+    
+    
+    $gridsNum = count($grids);
+    for($i=0 ; $i<$gridsNum ; $i++){
+        echo"checking Grid #".$i."<br>";
+        
+        $currentGrid = $grids[$i];
+        
+        foreach($currentGrid as $key => $arr){
+            echo" ".$key." => [" . implode(", ", array_values($arr)) . "]<br>";
+        }
+        echo"<br>";
+        
+        
+        // delete current grid from the array
+        unset($grids[$i]);
+        // loop currentGrid cells
+        foreach(array_keys($currentGrid) as $j){
+
+            // check current field $currentGrid[$j] in all other grids
+            echo" Current point: [".implode(", ", $currentGrid[$j])."]<br>";
+            $distinctMergedCellsNum++;
+            $fieldCounter = 0;
+            foreach($grids as $gridIdx => $grid){
+                $pos = findInFlatGrid($currentGrid[$j], $grid);
+                if($pos !== FALSE){
+                    
+                    echo"point found in grid #".$gridIdx." at index ".$pos.", deleting<br>";
+                    echo"Grid before deleting: <br>";
+                    foreach($grids[$gridIdx] as $key => $arr){
+                        echo"[" . implode(", ", array_values($arr)) . "] ";
+                    }
+                    echo"<br>";
+                    
+                    
+                    $fieldCounter++;
+                    unset($grids[$gridIdx][$pos]);
+                    
+                    echo"after deleting: <br>";
+                    foreach($grids[$gridIdx] as $key => $arr){
+                        echo"[" . implode(", ", array_values($arr)) . "] ";
+                    }
+                    echo"<br>";
+                    echo"<br>";
+                    
+                }
+            }
+            if($fieldCounter == $gridsNum-1){
+                echo"Point [".implode(", ", $currentGrid[$j])."] found in all grids<br>";
+                $overlappingMergedCellsNum++;
+                $overlappingCells[] = array(ROW => $currentGrid[$j][0], COL => $currentGrid[$j][1]);
+            }
+            echo"<br>";
+                    
+        }
+        echo"<br>";
+    }
+    if($returnStats){ $times["countSimilarity"] = 1000*(microtime(true) - $now); }
+    */
+    
+    
+    
     
     // echo "Overlapping cells: <br><pre>".print_r($overlappingCells, true)."</pre><hr>";
     // echo "Unique cells: " . $distinctMergedCellsNum."<br>";
@@ -314,8 +513,8 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
                 )
             );
     }
-    else if($returnGridsize){
-        return array($similarity, ($maxColIdx+1)*($maxRowId+1));
+    else if($returnStats){
+        return array($similarity, ($maxColIdx+1)*($maxRowId+1), $times);
     }
     else{
         return $similarity;
@@ -323,7 +522,39 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
 
 }
 
+function printGrid(&$grid){
+    foreach($grid as $row => $colIdx){
+        echo " ".$row." [";
+        foreach($colIdx as $col){
+            echo $col." ";
+        }
+        echo "]<br>";
+    }
+}
 
+function findInFlatGrid($flatValue, &$grid){
+    //echo "looking for [".implode(", ", $flatValue)."] in grid: <br>";
+    
+    foreach($grid as $idx => $point){
+        if($point[0] == $flatValue[0] && $point[1] == $flatValue[1]){
+            //echo " found at key " . $idx . "<br>";
+            return $idx;
+        }
+        /*
+        //echo "[".$point[0].", ".$point[1]."] ";
+        if($point[0] < $flatValue[0]){ continue; }
+        
+        if($point[0] == $flatValue[0] ){
+            if($point[1] > $flatValue[1]){
+                //echo " not found <br>";
+                return false;
+            }
+        }
+        */
+    }
+    //echo " not found <br>";
+    return false;
+}
 
 function findCellInGrids(&$gridsArr, $row, $col){
     $counter = 0;

@@ -26,7 +26,7 @@ switch($_REQUEST["command"]){
 
         echo "<pre>";
 
-        $userId = 3;
+        $userId = 1;
         if(isset($_REQUEST["userId"]) && $_REQUEST["userId"] != ""){
             $userId = $_REQUEST["userId"];
         }
@@ -37,11 +37,11 @@ switch($_REQUEST["command"]){
         $trajectoryObjects = loadTrajectories($DB_LINK, null, true, $userId);
 
         //echo "Trajectory Objects:<br>" . implode("<br>", $trajectoryObjects);
-
+        
         //echo "<br><br>";
         logToFile("<b>Loading data took " . (round(microtime(true) * 1000) - $currTime) . "ms</b><br>");
         logToFile("Number of data points: " . count($trajectoryObjects));
-        $currTime = round(microtime(true) * 1000);
+        $currTime = round( (true) * 1000);
 
 
 
@@ -83,8 +83,8 @@ switch($_REQUEST["command"]){
         else{
             $trajectoryObjects = loadTrajectories($DB_LINK,
                 array(
-                    "sampleDataCleaned/003/Trajectory/20081023175854.plt",
-                    "sampleDataCleaned/003/Trajectory/20081213091636.plt"
+                    "sampleDataCleaned/004/Trajectory/20090112022832.plt",
+                    "sampleDataCleaned/163/Trajectory/20080403162735.plt"
                     ),
                 true);
         }
@@ -238,7 +238,8 @@ switch($_REQUEST["command"]){
         
         $trajectorySetSize = 50;
         $similarityThreshold = 0.1;
-        
+        $algorithmVersion = 4;
+        $gridSizeMeters = 500;
         
         /* Clear existing data */
         //mysqli_query($DB_LINK, "TRUNCATE TABLE `pairmeasurements`");
@@ -261,11 +262,15 @@ switch($_REQUEST["command"]){
         for ($i=0; $i <= count($trajectories) - 2; $i++){
             for ($j=$i+1; $j <= count($trajectories) - 1; $j++){
                 $now = microtime(true);
-                $result = getTrajectorySimilarity(array($trajectories[$i], $trajectories[$j]), 500, false, false, true);
+                $result = getTrajectorySimilarity(array($trajectories[$i], $trajectories[$j]), $gridSizeMeters, false, false, true);
                 $timeElapsedMS = (microtime(true) - $now)*1000;
+                $totalPointsNum = count($trajectories[$i]->points) + count($trajectories[$j]->points);
                 /* Persist the pair to DB if similarity exceeds threshold */
                 if($result[0] > $similarityThreshold){
-                    mysqli_query($DB_LINK, "INSERT INTO `pairmeasurements`(`path1`, `path2`, `gridSize`, `similarity`, `timeOfCalcMS`, `gridCellsNum`) VALUES ('".$trajectories[$i]->filePath."', '".$trajectories[$j]->filePath."', '500', '".$result[0]."', '".$timeElapsedMS."', '".$result[1]."')");
+                    mysqli_query(
+                            $DB_LINK, 
+                            "INSERT INTO `pairmeasurements`(`path1`, `path2`, `totalPointsNum`, `gridSize`, `similarity`, `timeOfCalcMS`, `gridCellsNum`, `time_bounding`, `time_gridsize`, `time_markTrajectory`, `time_merging`, `time_findMaxRow`, `time_countSimilarity`, `algorithmVersion`,  `gridRowCtr`) VALUES ('".$trajectories[$i]->filePath."', '".$trajectories[$j]->filePath."', '".$totalPointsNum."', '".$gridSizeMeters."', '".$result[0]."', '".$timeElapsedMS."', '".$result[1]."', '".$result[2]["bounding"]."', '".$result[2]["gridsize"]."', '".$result[2]["markTrajectory"]."', '".$result[2]["merging"]."', '".$result[2]["findMaxRow"]."', '".$result[2]["countSimilarity"]."', '".$algorithmVersion."', '".$result[2]["gridRowCtr"]."')"
+                            );
                     $goodPairs++;
                 }
             }
