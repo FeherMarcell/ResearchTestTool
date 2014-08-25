@@ -80,7 +80,7 @@ var dataFiles = [];
 var availableColors = [];
 var availablePaths = [];
 var displayDataConfig = {
-    showMarkers: false,
+    showMarkers: true,
     showPath: true,
     drawBoundingBox: false,
     clearFirst: false
@@ -89,6 +89,13 @@ var displayDataConfig = {
 var similarityData = null;
 var gridPolys = [];
 var gridCells = [];
+
+// Define a symbol using SVG path notation, with an opacity of 1.
+var lineSymbol = {
+    path: 'M 0,-1 0,1',
+    strokeOpacity: .4,
+    scale: 2.5
+  };
 
 $(document).ready(function() {
     mapObject = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
@@ -373,9 +380,14 @@ $(document).ready(function() {
                                     gridCorners[0] + colIdx*cellSize[0],
                                     gridCorners[1] + (maxRow+1)*cellSize[1])
                         ],
-                        strokeColor: "#FF0000",
+                        strokeColor: "#000000",
                         strokeWidth: 1,
-                        strokeOpacity: .3,
+                        strokeOpacity: 0,
+                        icons: [{
+                            icon: lineSymbol,
+                            offset: '5px',
+                            repeat: '15px'
+                          }],
                         map: mapObject
                     }));
                 }
@@ -392,9 +404,14 @@ $(document).ready(function() {
                                     gridCorners[1] + rowIdx*cellSize[1]
                                     )
                         ],
-                        strokeColor: "#FF0000",
+                        strokeColor: "#000000",
                         strokeWidth: 1,
-                        strokeOpacity: .3,
+                        strokeOpacity: 0,
+                        icons: [{
+                            icon: lineSymbol,
+                            offset: '5px',
+                            repeat: '15px'
+                          }],
                         map: mapObject
                     }));
                 }

@@ -101,6 +101,8 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
          *  [1,2]
          *  [2,2]
          *  [3,2]
+         *  [3,3]
+         *  [3,4]
          * ]
          *
          * For fast search, we introduce another level into the array, that acts as the bucket in HashMaps.
@@ -110,7 +112,7 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
          *  0 => [1]
          *  1 => [1,2]
          *  2 => [2]
-         *  3 => [2]
+         *  3 => [2,3,4]
          * ]
          */
 
@@ -323,6 +325,26 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
     }
     if($returnStats){ $times["countSimilarity"] = 1000*(microtime(true) - $now); $times["gridRowCtr"] = $gridRowCtr; }
     
+    if($returnStats){
+        $grids = array();
+        for($i=0 ; $i<count($mergedGrids) ; $i++){
+
+            $currentGrid = array();
+            foreach($mergedGrids[$i] as $row => $colArr){
+                foreach($colArr as $col){
+                    $currentGrid[] = array($row, $col);
+                }
+            }
+            $grids[] = $currentGrid;
+        }
+     
+        // count points of all grids
+        $allPointCtr = 0;
+        for($i=0 ; $i<count($grids) ; $i++){
+            $allPointCtr += count($grids[$i]);
+        }
+        $times["cellsNum"] = $allPointCtr;
+    }
     
     
     
@@ -344,6 +366,18 @@ function getTrajectorySimilarity($trajectoryObjects, $gridSizeMeters=500, $loggi
     }
     
     if($returnStats){
+        $grids = array();
+        for($i=0 ; $i<count($mergedGrids) ; $i++){
+
+            $currentGrid = array();
+            foreach($mergedGrids[$i] as $row => $colArr){
+                foreach($colArr as $col){
+                    $currentGrid[] = array($row, $col);
+                }
+            }
+            $grids[] = $currentGrid;
+        }
+     
         // count points of all grids
         $allPointCtr = 0;
         for($i=0 ; $i<count($grids) ; $i++){
