@@ -21,10 +21,8 @@ class LatLngBounds{
     public function contains(LatLng $point){
 
         return
-            ($this->southWest->lat <= $point->lat) &&
-            ($point->lat <= $this->northEast->lat) &&
-            ($this->southWest->lng <= $point->lng) &&
-            ($point->lng <= $this->northEast->lng);
+            ($this->southWest->lat <= $point->lat) && ($point->lat <= $this->northEast->lat) &&
+            ($this->southWest->lng <= $point->lng) && ($point->lng <= $this->northEast->lng);
     }
 
     public static function fromTrajectories($trajectories){

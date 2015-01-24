@@ -89,13 +89,20 @@ switch($_REQUEST["command"]){
                 true);
         }
         
+        // set up grid size
         $gridSize = 500;
         if(isset($_REQUEST["gridSize"])){
             $gridSize = $_REQUEST["gridSize"];
         }
         
-
+        // if grids should be calculated and returned, or just the similarity value
+        $withGrids = false;
+        if(isset($_REQUEST["withGrid"]) || in_array("withGrid", array_keys($_REQUEST))){
+            $withGrids = true;
+        }
+        
         require_once './trajectorySimilarity.php';
+        // <editor-fold desc="Test trajctories" defaultstate="collapsed">
         /*
 
         $testTrajectory = new Trajectory(0, 0, "", '', 0, "0 0 1 1", 0, 0);
@@ -164,14 +171,12 @@ switch($_REQUEST["command"]){
         //echo "Bounding box: \n<pre>".print_r($testTrajectory2->boundingBox, true)."</pre><br>";
         $result = getTrajectorySimilarity(array($testTrajectory, $testTrajectory2), 40000);
         */
+        // </editor-fold>
         
-        $withGrids = false;
-        if(isset($_REQUEST["withGrid"]) || in_array("withGrid", array_keys($_REQUEST))){
-            $withGrids = true;
-        }
+        
 
         $now = microtime();
-        $result = getTrajectorySimilarity($trajectoryObjects, $gridSize, true, $withGrids);
+        $result = getTrajectorySimilarity($trajectoryObjects, $gridSize, false, $withGrids, true);
         //echo ((microtime() - $now) *1000) . "ns<br>";
         if(is_array($result)){
             echo json_encode($result);
@@ -180,27 +185,6 @@ switch($_REQUEST["command"]){
             echo $result;
         }
         
-        /*
-        //sort($result["MainGrid"]);
-        echo "Main grid: <br>";
-        foreach($result["MainGrid"] as $key => $arr){
-            echo $key . " => [" . implode(", ", $arr) . "]<br>";
-        }
-
-        //sort($result["SecondaryGrid"]);
-        echo "Secondary grid: <br>";
-        foreach($result["SecondaryGrid"] as $key => $arr){
-            echo $key . " => [" . implode(", ", $arr) . "]<br>";
-        }
-
-        echo "MERGED grid: <br>";
-        //sort($result["MergedGrid"]);
-        foreach($result["MergedGrid"] as $key => $arr){
-            echo $key . " => [" . implode(", ", $arr) . "]<br>";
-        }
-
-        //echo "<pre>".print_r($result, true)."</pre><br/>";
-        */
 
         break;
     
