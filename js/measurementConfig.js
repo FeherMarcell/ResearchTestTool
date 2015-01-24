@@ -9,7 +9,7 @@ $(document).ready(function(){
                 {command: "generateConfig", dataFilesNum: $("#dataFilesNum").val(), minAngles: $("#minAngles").val(), maxTolerances: $("#maxTolerances").val() },
                 function(result){
                     $("#infoBox strong").html(result);
-                    if(document.getElementById("infoBox").style.display == "none"){
+                    if(document.getElementById("infoBox").style.display === "none"){
                         $("#infoBox").slideDown();
                     }
                 },
